@@ -7,8 +7,13 @@ const DutyAllocation = require("../models/DutyAllocation");
 const TeacherLeave = require("../models/TeacherLeave");
 
 router.post("/auto-allocate", async (req, res) => {
-
     try {
+
+        console.log("Starting allocation engine...");
+
+        // Reset previous allocations
+        await DutyAllocation.deleteMany({});
+        await Teacher.updateMany({}, { $set: { totalDuties: 0 } });
 
         const exams = await Exam.find().sort({ date: 1 });
 
@@ -16,92 +21,148 @@ router.post("/auto-allocate", async (req, res) => {
 
         for (let exam of exams) {
 
-            const teachers = await Teacher.find();
+            console.log("\nProcessing exam:", exam.subject);
 
-            const leaves = await TeacherLeave.find({
-                date: exam.date,
-                slot: exam.slot
-            });
+            const requiredInvigilators = exam.invigilators || 1;
 
-            const leaveEmails = leaves.map(l => l.email);
+            for (let i = 0; i < requiredInvigilators; i++) {
 
-            let bestTeacher = null;
-            let bestScore = -Infinity;
+                const teachers = await Teacher.find();
 
-            for (let teacher of teachers) {
-
-                let score = 0;
-
-                // ❌ Skip if subject conflict
-                if (
-                    teacher.subject &&
-                    teacher.subject.toLowerCase() === exam.subject.toLowerCase()
-                ) {
-                    score -= 100;
-                }
-
-                // ❌ Skip if on leave
-                if (leaveEmails.includes(teacher.email)) {
-                    score -= 100;
-                }
-
-                // ✅ Fairness (less duties = higher score)
-                score += (10 - teacher.totalDuties);
-
-                // ✅ Availability bonus
-                const unavailable = teacher.availability.some(a =>
-                    a.date === exam.date && a.slot === exam.slot
-                );
-
-                if (!unavailable) {
-                    score += 5;
-                }
-
-                // ❌ Consecutive duty penalty
-                const previousDuty = await DutyAllocation.findOne({
-                    teacherEmail: teacher.email,
+                const leaves = await TeacherLeave.find({
                     date: exam.date
                 });
 
-                if (previousDuty) {
-                    score -= 4;
+                const leaveEmails = leaves.map(l => l.email);
+
+                let bestTeacher = null;
+                let bestScore = -Infinity;
+
+                for (let teacher of teachers) {
+
+                    const teacherSubject = (teacher.subject || "")
+                        .toLowerCase()
+                        .replace(/\s+/g, " ")
+                        .trim();
+
+                    const examSubject = (exam.subject || "")
+                        .toLowerCase()
+                        .replace(/\s+/g, " ")
+                        .trim();
+
+                    console.log(
+                        "Comparing:",
+                        teacher.email,
+                        "| teacher subject:",
+                        teacherSubject,
+                        "| exam subject:",
+                        examSubject
+                    );
+
+                    // HARD BLOCK — subject conflict
+                    if (teacherSubject === examSubject) {
+                        console.log("Blocked (same subject):", teacher.email);
+                        continue;
+                    }
+
+                    // HARD BLOCK — teacher on leave
+                    if (leaveEmails.includes(teacher.email)) {
+                        console.log("Blocked (leave):", teacher.email);
+                        continue;
+                    }
+
+                    // HARD BLOCK — already assigned same exam slot
+                    const alreadyAssigned = await DutyAllocation.findOne({
+                        teacherEmail: teacher.email,
+                        date: exam.date
+                    });
+
+                    if (alreadyAssigned) {
+                        console.log("Blocked (already assigned same date):", teacher.email);
+                        continue;
+                    }
+
+                    let score = 0;
+
+                    // fairness
+                    score += (20 - teacher.totalDuties);
+
+                    // availability bonus
+                    const unavailable = teacher.availability?.some(a =>
+                        a.date === exam.date
+                    );
+
+                    if (!unavailable) {
+                        score += 5;
+                    }
+
+                    // department bonus
+                    if (
+                        teacher.department &&
+                        exam.department &&
+                        teacher.department === exam.department
+                    ) {
+                        score += 2;
+                    }
+
+                    console.log("Score for", teacher.email, "=", score);
+
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestTeacher = teacher;
+                    }
                 }
 
-                // Optional department match bonus
-                if (
-                    teacher.department &&
-                    exam.department &&
-                    teacher.department === exam.department
-                ) {
-                    score += 2;
+                if (bestTeacher) {
+
+                    console.log("Selected:", bestTeacher.email);
+
+                    const allocation = await DutyAllocation.create({
+                        teacherEmail: bestTeacher.email,
+                        examId: exam._id,
+                        subject: exam.subject,
+                        date: exam.date
+                    });
+
+                    bestTeacher.totalDuties += 1;
+                    await bestTeacher.save();
+
+                    allocations.push(allocation);
+
+                } else {
+
+                    console.log("No teacher available for:", exam.subject);
+
                 }
-
-                if (score > bestScore) {
-                    bestScore = score;
-                    bestTeacher = teacher;
-                }
-            }
-
-            if (bestTeacher) {
-
-                const allocation = await DutyAllocation.create({
-                    teacherEmail: bestTeacher.email,
-                    examId: exam._id,
-                    subject: exam.subject,
-                    date: exam.date,
-                    slot: exam.slot
-                });
-
-                bestTeacher.totalDuties += 1;
-                await bestTeacher.save();
-
-                allocations.push(allocation);
             }
         }
 
         res.json({
-            message: "Smart allocation completed",
+            message: "Smart allocation completed successfully",
             allocations
+        });
+
+    } catch (err) {
+
+        console.error("Allocation error:", err);
+
+        res.status(500).json({
+            error: err.message
+        });
+    }
+});
+
+
+/* RESET ROUTE */
+
+router.delete("/clear", async (req, res) => {
+    try {
+
+        await DutyAllocation.deleteMany({});
+        await Teacher.updateMany({}, { $set: { totalDuties: 0 } });
+
+        res.json({
+            message: "All allocations cleared successfully"
         });
 
     } catch (err) {
@@ -109,7 +170,9 @@ router.post("/auto-allocate", async (req, res) => {
         res.status(500).json({
             error: err.message
         });
+
     }
 });
+
 
 module.exports = router;
