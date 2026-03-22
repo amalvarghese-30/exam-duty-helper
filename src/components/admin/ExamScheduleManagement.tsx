@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import axios from 'axios';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,8 +9,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { toast } from 'sonner';
 import { Plus, Pencil, Trash2, Upload } from 'lucide-react';
 
+const API = "http://localhost:5000";
+
 interface Exam {
-  id: string;
+  _id: string;
   subject: string;
   exam_date: string;
   start_time: string;
@@ -26,10 +28,18 @@ export default function ExamScheduleManagement() {
   const [form, setForm] = useState({
     subject: '', exam_date: '', start_time: '', end_time: '', room_number: '', required_invigilators: 1
   });
+  const [loading, setLoading] = useState(true);
 
   const fetchExams = async () => {
-    const { data } = await supabase.from('exam_schedules').select('*').order('exam_date');
-    if (data) setExams(data);
+    try {
+      const res = await axios.get(`${API}/exams`);
+      setExams(res.data);
+    } catch (error) {
+      console.error('Failed to fetch exams:', error);
+      toast.error('Failed to load exams');
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { fetchExams(); }, []);
@@ -40,32 +50,44 @@ export default function ExamScheduleManagement() {
       return;
     }
     const payload = { ...form, required_invigilators: Number(form.required_invigilators) };
-    if (editing) {
-      const { error } = await supabase.from('exam_schedules').update(payload).eq('id', editing.id);
-      if (error) { toast.error(error.message); return; }
-      toast.success('Exam updated');
-    } else {
-      const { error } = await supabase.from('exam_schedules').insert(payload);
-      if (error) { toast.error(error.message); return; }
-      toast.success('Exam added');
+
+    try {
+      if (editing) {
+        await axios.put(`${API}/exams/${editing._id}`, payload);
+        toast.success('Exam updated');
+      } else {
+        await axios.post(`${API}/exams`, payload);
+        toast.success('Exam added');
+      }
+      setDialogOpen(false);
+      setEditing(null);
+      fetchExams();
+    } catch (error: any) {
+      console.error('Failed to save exam:', error);
+      toast.error(error.response?.data?.error || 'Operation failed');
     }
-    setDialogOpen(false);
-    setEditing(null);
-    fetchExams();
   };
 
   const handleDelete = async (id: string) => {
-    const { error } = await supabase.from('exam_schedules').delete().eq('id', id);
-    if (error) { toast.error(error.message); return; }
-    toast.success('Exam removed');
-    fetchExams();
+    try {
+      await axios.delete(`${API}/exams/${id}`);
+      toast.success('Exam removed');
+      fetchExams();
+    } catch (error: any) {
+      console.error('Failed to delete exam:', error);
+      toast.error(error.response?.data?.error || 'Delete failed');
+    }
   };
 
   const openEdit = (e: Exam) => {
     setEditing(e);
     setForm({
-      subject: e.subject, exam_date: e.exam_date, start_time: e.start_time,
-      end_time: e.end_time, room_number: e.room_number, required_invigilators: e.required_invigilators
+      subject: e.subject,
+      exam_date: e.exam_date,
+      start_time: e.start_time,
+      end_time: e.end_time,
+      room_number: e.room_number,
+      required_invigilators: e.required_invigilators
     });
     setDialogOpen(true);
   };
@@ -103,12 +125,29 @@ export default function ExamScheduleManagement() {
       return;
     }
 
-    const { error } = await supabase.from('exam_schedules').insert(rows);
-    if (error) { toast.error(error.message); return; }
-    toast.success(`${rows.length} exams imported`);
-    fetchExams();
+    try {
+      // Import exams one by one or use bulk endpoint if available
+      for (const exam of rows) {
+        await axios.post(`${API}/exams`, exam);
+      }
+      toast.success(`${rows.length} exams imported`);
+      fetchExams();
+    } catch (error: any) {
+      console.error('Failed to import exams:', error);
+      toast.error(error.response?.data?.error || 'Import failed');
+    }
     e.target.value = '';
   };
+
+  if (loading) {
+    return (
+      <div className="space-y-4 animate-fade-in">
+        <Card className="shadow-card">
+          <div className="py-8 text-center text-muted-foreground">Loading exams...</div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 animate-fade-in">
@@ -147,10 +186,10 @@ export default function ExamScheduleManagement() {
               </TableRow>
             ) : (
               exams.map(e => (
-                <TableRow key={e.id}>
+                <TableRow key={e._id}>
                   <TableCell className="font-medium">{e.subject}</TableCell>
                   <TableCell>{new Date(e.exam_date).toLocaleDateString()}</TableCell>
-                  <TableCell className="text-muted-foreground">{e.start_time.slice(0,5)} – {e.end_time.slice(0,5)}</TableCell>
+                  <TableCell className="text-muted-foreground">{e.start_time.slice(0, 5)} – {e.end_time.slice(0, 5)}</TableCell>
                   <TableCell>{e.room_number}</TableCell>
                   <TableCell>{e.required_invigilators}</TableCell>
                   <TableCell>
@@ -158,7 +197,7 @@ export default function ExamScheduleManagement() {
                       <Button variant="ghost" size="icon" onClick={() => openEdit(e)}>
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete(e.id)} className="text-destructive hover:text-destructive">
+                      <Button variant="ghost" size="icon" onClick={() => handleDelete(e._id)} className="text-destructive hover:text-destructive">
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>

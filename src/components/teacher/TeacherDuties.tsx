@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import axios from 'axios';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { toast } from 'sonner';
+
+const API = "http://localhost:5000";
 
 interface DutyRow {
-  id: string;
+  _id: string;
   status: string;
   exam: {
     subject: string;
@@ -20,22 +23,27 @@ interface DutyRow {
 export default function TeacherDuties() {
   const { user } = useAuth();
   const [duties, setDuties] = useState<DutyRow[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!user) return;
-    const fetch = async () => {
-      const { data: teacher } = await supabase.from('teachers').select('id').eq('user_id', user.id).maybeSingle();
-      if (!teacher) return;
+    const fetchDuties = async () => {
+      try {
+        // Get teacher by email
+        const teacherRes = await axios.get(`${API}/teachers/email/${user.email}`);
+        const teacherId = teacherRes.data._id;
 
-      const { data } = await supabase
-        .from('duty_allocations')
-        .select('id, status, exam:exam_schedules(subject, exam_date, start_time, end_time, room_number)')
-        .eq('teacher_id', teacher.id)
-        .order('allocated_at', { ascending: false });
-
-      if (data) setDuties(data as unknown as DutyRow[]);
+        // Fetch duties for this teacher
+        const dutiesRes = await axios.get(`${API}/duties/teacher/${teacherId}`);
+        setDuties(dutiesRes.data);
+      } catch (error) {
+        console.error('Failed to fetch duties:', error);
+        toast.error('Failed to load your duties');
+      } finally {
+        setLoading(false);
+      }
     };
-    fetch();
+    fetchDuties();
   }, [user]);
 
   const statusColor = (s: string) => {
@@ -43,6 +51,14 @@ export default function TeacherDuties() {
     if (s === 'accepted') return 'bg-success/10 text-success border-success/20';
     return 'bg-muted text-muted-foreground';
   };
+
+  if (loading) {
+    return (
+      <Card className="shadow-card">
+        <div className="py-8 text-center text-muted-foreground">Loading duties...</div>
+      </Card>
+    );
+  }
 
   return (
     <div className="animate-fade-in">
@@ -66,11 +82,11 @@ export default function TeacherDuties() {
               </TableRow>
             ) : (
               duties.map(d => (
-                <TableRow key={d.id}>
+                <TableRow key={d._id}>
                   <TableCell className="font-medium">{d.exam?.subject || '—'}</TableCell>
                   <TableCell>{d.exam?.exam_date ? new Date(d.exam.exam_date).toLocaleDateString() : '—'}</TableCell>
                   <TableCell className="text-muted-foreground">
-                    {d.exam?.start_time?.slice(0,5)} – {d.exam?.end_time?.slice(0,5)}
+                    {d.exam?.start_time?.slice(0, 5)} – {d.exam?.end_time?.slice(0, 5)}
                   </TableCell>
                   <TableCell>{d.exam?.room_number}</TableCell>
                   <TableCell>

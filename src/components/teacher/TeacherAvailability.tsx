@@ -1,16 +1,17 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import axios from 'axios';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { Plus, Trash2, CalendarDays } from 'lucide-react';
 
+const API = "http://localhost:5000";
+
 interface LeaveDate {
-  id: string;
+  _id: string;
   leave_date: string;
   reason: string;
 }
@@ -21,18 +22,28 @@ export default function TeacherAvailability() {
   const [leaveDates, setLeaveDates] = useState<LeaveDate[]>([]);
   const [newDate, setNewDate] = useState('');
   const [newReason, setNewReason] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!user) return;
-    const fetch = async () => {
-      const { data: teacher } = await supabase.from('teachers').select('id').eq('user_id', user.id).maybeSingle();
-      if (!teacher) return;
-      setTeacherId(teacher.id);
+    const fetchTeacherAndLeave = async () => {
+      try {
+        // Get teacher by email
+        const teacherRes = await axios.get(`${API}/teachers/email/${user.email}`);
+        const tid = teacherRes.data._id;
+        setTeacherId(tid);
 
-      const { data } = await supabase.from('teacher_leave_dates').select('*').eq('teacher_id', teacher.id).order('leave_date');
-      if (data) setLeaveDates(data);
+        // Fetch leave dates
+        const leaveRes = await axios.get(`${API}/teacher-leave/${tid}`);
+        setLeaveDates(leaveRes.data);
+      } catch (error) {
+        console.error('Failed to fetch teacher data:', error);
+        toast.error('Failed to load your data');
+      } finally {
+        setLoading(false);
+      }
     };
-    fetch();
+    fetchTeacherAndLeave();
   }, [user]);
 
   const addLeave = async () => {
@@ -40,26 +51,44 @@ export default function TeacherAvailability() {
       toast.error('Please select a date');
       return;
     }
-    const { error } = await supabase.from('teacher_leave_dates').insert({
-      teacher_id: teacherId,
-      leave_date: newDate,
-      reason: newReason,
-    });
-    if (error) { toast.error(error.message); return; }
-    toast.success('Leave date added');
-    setNewDate('');
-    setNewReason('');
-    // Refetch
-    const { data } = await supabase.from('teacher_leave_dates').select('*').eq('teacher_id', teacherId).order('leave_date');
-    if (data) setLeaveDates(data);
+
+    try {
+      const response = await axios.post(`${API}/teacher-leave`, {
+        teacher_id: teacherId,
+        leave_date: newDate,
+        reason: newReason,
+      });
+
+      setLeaveDates([...leaveDates, response.data]);
+      setNewDate('');
+      setNewReason('');
+      toast.success('Leave date added');
+    } catch (error: any) {
+      console.error('Failed to add leave:', error);
+      toast.error(error.response?.data?.error || 'Failed to add leave date');
+    }
   };
 
   const removeLeave = async (id: string) => {
-    const { error } = await supabase.from('teacher_leave_dates').delete().eq('id', id);
-    if (error) { toast.error(error.message); return; }
-    setLeaveDates(leaveDates.filter(l => l.id !== id));
-    toast.success('Leave date removed');
+    try {
+      await axios.delete(`${API}/teacher-leave/${id}`);
+      setLeaveDates(leaveDates.filter(l => l._id !== id));
+      toast.success('Leave date removed');
+    } catch (error: any) {
+      console.error('Failed to remove leave:', error);
+      toast.error(error.response?.data?.error || 'Failed to remove leave date');
+    }
   };
+
+  if (loading) {
+    return (
+      <Card className="shadow-card">
+        <CardContent className="py-8 text-center text-muted-foreground">
+          Loading...
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (!teacherId) {
     return (
@@ -109,14 +138,14 @@ export default function TeacherAvailability() {
           ) : (
             <div className="space-y-2">
               {leaveDates.map(l => (
-                <div key={l.id} className="flex items-center justify-between rounded-lg bg-muted/50 p-3">
+                <div key={l._id} className="flex items-center justify-between rounded-lg bg-muted/50 p-3">
                   <div>
                     <p className="text-sm font-medium text-foreground">
                       {new Date(l.leave_date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
                     </p>
                     {l.reason && <p className="text-xs text-muted-foreground">{l.reason}</p>}
                   </div>
-                  <Button variant="ghost" size="icon" onClick={() => removeLeave(l.id)} className="text-destructive hover:text-destructive">
+                  <Button variant="ghost" size="icon" onClick={() => removeLeave(l._id)} className="text-destructive hover:text-destructive">
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>

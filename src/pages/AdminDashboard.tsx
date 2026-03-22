@@ -3,7 +3,6 @@ import { useAuth } from '@/hooks/useAuth';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
 import { LayoutDashboard, Users, Calendar, ClipboardList, Settings, BarChart3 } from 'lucide-react';
 import TeacherManagement from '@/components/admin/TeacherManagement';
 import ExamScheduleManagement from '@/components/admin/ExamScheduleManagement';

@@ -1,13 +1,16 @@
 import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import axios from 'axios';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { GraduationCap, Shield } from 'lucide-react';
+import { GraduationCap } from 'lucide-react';
+
+const API = "http://localhost:5000";
 
 export default function Auth() {
   const { user, role, loading } = useAuth();
@@ -123,7 +126,7 @@ function RegisterForm() {
     if (error) {
       toast.error(error.message);
     } else {
-      toast.success('Account created! Please check your email to verify.');
+      toast.success('Account created! Please login to continue.');
     }
     setLoading(false);
   };
@@ -150,6 +153,7 @@ function RegisterForm() {
 }
 
 function SignOutButton() {
+
   const { signOut } = useAuth();
   return (
     <Button variant="outline" className="w-full" onClick={signOut}>

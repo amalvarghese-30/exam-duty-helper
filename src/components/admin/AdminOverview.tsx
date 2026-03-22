@@ -1,24 +1,35 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import axios from 'axios';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, Calendar, ClipboardList, AlertTriangle } from 'lucide-react';
+import { toast } from 'sonner';
+
+const API = "http://localhost:5000";
 
 export default function AdminOverview() {
-  const [stats, setStats] = useState({ teachers: 0, exams: 0, allocations: 0, pending: 0 });
+  const [stats, setStats] = useState({ teachers: 0, exams: 0, allocations: 0 });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchStats = async () => {
-      const [t, e, a] = await Promise.all([
-        supabase.from('teachers').select('id', { count: 'exact', head: true }),
-        supabase.from('exam_schedules').select('id', { count: 'exact', head: true }),
-        supabase.from('duty_allocations').select('id', { count: 'exact', head: true }),
-      ]);
-      setStats({
-        teachers: t.count ?? 0,
-        exams: e.count ?? 0,
-        allocations: a.count ?? 0,
-        pending: 0,
-      });
+      try {
+        const [teachersRes, examsRes, dutiesRes] = await Promise.all([
+          axios.get(`${API}/teachers`),
+          axios.get(`${API}/exams`),
+          axios.get(`${API}/duties`),
+        ]);
+
+        setStats({
+          teachers: teachersRes.data.length,
+          exams: examsRes.data.length,
+          allocations: dutiesRes.data.length,
+        });
+      } catch (error) {
+        console.error('Failed to fetch stats:', error);
+        toast.error('Failed to load dashboard stats');
+      } finally {
+        setLoading(false);
+      }
     };
     fetchStats();
   }, []);
@@ -27,8 +38,24 @@ export default function AdminOverview() {
     { title: 'Total Teachers', value: stats.teachers, icon: <Users className="h-5 w-5" />, color: 'text-primary' },
     { title: 'Exam Schedules', value: stats.exams, icon: <Calendar className="h-5 w-5" />, color: 'text-success' },
     { title: 'Duties Allocated', value: stats.allocations, icon: <ClipboardList className="h-5 w-5" />, color: 'text-accent' },
-    { title: 'Pending Swaps', value: stats.pending, icon: <AlertTriangle className="h-5 w-5" />, color: 'text-warning' },
+    { title: 'Pending Swaps', value: 0, icon: <AlertTriangle className="h-5 w-5" />, color: 'text-warning' },
   ];
+
+  if (loading) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map(i => (
+            <Card key={i} className="shadow-card">
+              <CardContent className="p-5">
+                <div className="animate-pulse h-20 bg-muted rounded" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">

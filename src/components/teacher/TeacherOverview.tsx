@@ -1,37 +1,52 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import axios from 'axios';
 import { Card, CardContent } from '@/components/ui/card';
 import { ClipboardList, Calendar, AlertCircle } from 'lucide-react';
+import { toast } from 'sonner';
+
+const API = "http://localhost:5000";
 
 export default function TeacherOverview() {
   const { user } = useAuth();
   const [stats, setStats] = useState({ duties: 0, upcoming: 0, leaveDays: 0 });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!user) return;
-    const fetch = async () => {
-      const { data: teacher } = await supabase.from('teachers').select('id').eq('user_id', user.id).maybeSingle();
-      if (!teacher) return;
+    const fetchData = async () => {
+      try {
+        // Get teacher ID by email
+        const teacherRes = await axios.get(`${API}/teachers/email/${user.email}`);
+        const teacherId = teacherRes.data._id;
 
-      const [duties, leave] = await Promise.all([
-        supabase.from('duty_allocations').select('*, exam:exam_schedules(exam_date)').eq('teacher_id', teacher.id),
-        supabase.from('teacher_leave_dates').select('id', { count: 'exact', head: true }).eq('teacher_id', teacher.id),
-      ]);
+        // Fetch duties for this teacher
+        const dutiesRes = await axios.get(`${API}/duties/teacher/${teacherId}`);
+        const duties = dutiesRes.data;
 
-      const today = new Date().toISOString().split('T')[0];
-      const upcoming = (duties.data || []).filter(d => {
-        const examDate = (d as any).exam?.exam_date;
-        return examDate && examDate >= today;
-      }).length;
+        // Fetch leave dates
+        const leaveRes = await axios.get(`${API}/teacher-leave/${teacherId}`);
+        const leaveDates = leaveRes.data;
 
-      setStats({
-        duties: duties.data?.length || 0,
-        upcoming,
-        leaveDays: leave.count || 0,
-      });
+        const today = new Date().toISOString().split('T')[0];
+        const upcomingDuties = duties.filter((d: any) => {
+          const examDate = d.exam?.exam_date;
+          return examDate && examDate >= today;
+        }).length;
+
+        setStats({
+          duties: duties.length,
+          upcoming: upcomingDuties,
+          leaveDays: leaveDates.length,
+        });
+      } catch (error) {
+        console.error('Failed to fetch teacher stats:', error);
+        toast.error('Failed to load dashboard data');
+      } finally {
+        setLoading(false);
+      }
     };
-    fetch();
+    fetchData();
   }, [user]);
 
   const cards = [
@@ -39,6 +54,14 @@ export default function TeacherOverview() {
     { title: 'Upcoming', value: stats.upcoming, icon: <Calendar className="h-5 w-5" />, color: 'text-success' },
     { title: 'Leave Days', value: stats.leaveDays, icon: <AlertCircle className="h-5 w-5" />, color: 'text-warning' },
   ];
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
