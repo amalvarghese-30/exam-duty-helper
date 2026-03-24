@@ -25,7 +25,7 @@ export default function DutyAllocation() {
 
   const fetchAllocations = async () => {
     try {
-      const res = await axios.get(`${API}/duties`);
+      const res = await axios.get(`${API}/auto-allocate/`);
       setAllocations(res.data);
     } catch (error) {
       console.error('Failed to fetch allocations:', error);
@@ -38,7 +38,7 @@ export default function DutyAllocation() {
   const runAllocation = async () => {
     setLoading(true);
     try {
-      const response = await axios.post(`${API}/duties/allocate`);
+      const response = await axios.post(`${API}/auto-allocate/`);
       toast.success(response.data.message || `${response.data.allocated || 0} duties allocated successfully!`);
       fetchAllocations();
     } catch (err: any) {
@@ -50,7 +50,7 @@ export default function DutyAllocation() {
 
   const clearAllocations = async () => {
     try {
-      await axios.delete(`${API}/duties`);
+      await axios.delete(`${API}/auto-allocate/clear`);
       toast.success('All allocations cleared');
       fetchAllocations();
     } catch (err: any) {

@@ -7,7 +7,6 @@ const cors = require("cors");
 const teacherRoutes = require("./routes/teacherRoutes");
 const authRoutes = require("./routes/authRoutes");
 const examRoutes = require("./routes/examRoutes");
-const dutyRoutes = require("./routes/dutyRoutes");
 const teacherLeaveRoutes = require("./routes/teacherLeaveRoutes");
 const autoAllocateRoutes = require("./routes/autoAllocateRoutes");
 
@@ -24,9 +23,8 @@ mongoose.connect(process.env.MONGO_URI)
 app.use("/auth", authRoutes);
 app.use("/teachers", teacherRoutes);
 app.use("/exams", examRoutes);
-app.use("/duties", dutyRoutes);
 app.use("/teacher-leave", teacherLeaveRoutes);
-app.use("/allocate", autoAllocateRoutes);
+app.use("/auto-allocate", autoAllocateRoutes);
 
 app.listen(process.env.PORT, () =>
     console.log(`Server running on port ${process.env.PORT}`)
