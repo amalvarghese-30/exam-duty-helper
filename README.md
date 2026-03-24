@@ -62,5 +62,13 @@ Mongoose
 JWT Authentication
 bcrypt password hashing
 
+AI Duty Allocation
 
+Automatically assigns teachers to exams while ensuring:
+
+No teacher invigilates their own subject or if on leave.
+Duties are distributed fairly among all teachers.
+No teacher is assigned multiple times on the same date.
+
+AI parses the rules, generates a roster, and redistributes duties if needed to maintain fairness.
 
