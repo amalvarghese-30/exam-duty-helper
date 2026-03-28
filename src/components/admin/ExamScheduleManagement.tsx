@@ -226,7 +226,7 @@ export default function ExamScheduleManagement() {
               </div>
               <div className="space-y-2">
                 <Label>Room</Label>
-                <Input value={form.room_number} onChange={e => setForm({ ...form, room_number: e.target.value })} placeholder="Hall A" />
+                <Input value={form.room_number} placeholder="Auto-assigned" readOnly />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
