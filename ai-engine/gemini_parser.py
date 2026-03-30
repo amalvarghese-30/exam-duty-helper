@@ -1,4 +1,4 @@
-from google import genai
+import google.genai as genai
 import os
 from dotenv import load_dotenv
 import json
@@ -6,6 +6,7 @@ import json
 load_dotenv()
 
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+
 
 def parse_rules(rule_text):
 

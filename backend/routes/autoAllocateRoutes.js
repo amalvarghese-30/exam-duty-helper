@@ -37,7 +37,7 @@ router.get("/", async (req, res) => {
 // =============================
 router.post("/", async (req, res) => {
   try {
-    console.log("Calling Python AI engine...");
+    console.log("React → Node backend → Flask scheduler → allocator.py");
 
     const teachers = await Teacher.find();
     const exams = await Exam.find();
