@@ -35,7 +35,7 @@ interface Teacher {
   availability_status?: string;
 }
 
-const API = "http://localhost:5000/teachers";
+const API = "http://localhost:3000/api/teachers";
 
 export default function TeacherManagement() {
 

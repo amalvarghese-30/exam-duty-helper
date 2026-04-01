@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Plus, Trash2, CalendarDays } from 'lucide-react';
 
-const API = "http://localhost:5000";
+const API = "http://localhost:3000/api";
 
 interface LeaveDate {
   _id: string;

@@ -1,41 +1,35 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import axios from 'axios';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
+import { TeacherDashboardService } from '@/services/TeacherDashboardService';
 
-const API = "http://localhost:5000";
-
-interface DutyRow {
-  _id: string;
+interface Duty {
+  exam_id: string;
+  subject_name: string;
+  date: string;
+  time_from: string;
+  time_to: string;
+  room: string;
+  duty_types: string[];
   status: string;
-  exam: {
-    subject: string;
-    exam_date: string;
-    start_time: string;
-    end_time: string;
-    room_number: string;
-  } | null;
 }
 
 export default function TeacherDuties() {
   const { user } = useAuth();
-  const [duties, setDuties] = useState<DutyRow[]>([]);
+  const [duties, setDuties] = useState<Duty[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!user) return;
     const fetchDuties = async () => {
       try {
-        // Get teacher by email
-        const teacherRes = await axios.get(`${API}/teachers/email/${user.email}`);
-        const teacherId = teacherRes.data._id;
-
-        // Fetch duties for this teacher
-        const dutiesRes = await axios.get(`${API}/duties/teacher/${teacherId}`);
-        setDuties(dutiesRes.data);
+        const response = await TeacherDashboardService.getTeacherDuties();
+        if (response.success && response.data) {
+          setDuties(response.data);
+        }
       } catch (error) {
         console.error('Failed to fetch duties:', error);
         toast.error('Failed to load your duties');
@@ -47,8 +41,8 @@ export default function TeacherDuties() {
   }, [user]);
 
   const statusColor = (s: string) => {
-    if (s === 'assigned') return 'bg-primary/10 text-primary border-primary/20';
-    if (s === 'accepted') return 'bg-success/10 text-success border-success/20';
+    if (s === 'Upcoming') return 'bg-primary/10 text-primary border-primary/20';
+    if (s === 'Completed') return 'bg-success/10 text-success border-success/20';
     return 'bg-muted text-muted-foreground';
   };
 
@@ -70,25 +64,33 @@ export default function TeacherDuties() {
               <TableHead>Date</TableHead>
               <TableHead>Time</TableHead>
               <TableHead>Room</TableHead>
+              <TableHead>Duty Type</TableHead>
               <TableHead>Status</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {duties.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                   No duties assigned yet.
                 </TableCell>
               </TableRow>
             ) : (
               duties.map(d => (
-                <TableRow key={d._id}>
-                  <TableCell className="font-medium">{d.exam?.subject || '—'}</TableCell>
-                  <TableCell>{d.exam?.exam_date ? new Date(d.exam.exam_date).toLocaleDateString() : '—'}</TableCell>
+                <TableRow key={d.exam_id}>
+                  <TableCell className="font-medium">{d.subject_name || '—'}</TableCell>
+                  <TableCell>{d.date ? new Date(d.date).toLocaleDateString() : '—'}</TableCell>
                   <TableCell className="text-muted-foreground">
-                    {d.exam?.start_time?.slice(0, 5)} – {d.exam?.end_time?.slice(0, 5)}
+                    {d.time_from?.slice(0, 5)} – {d.time_to?.slice(0, 5)}
                   </TableCell>
-                  <TableCell>{d.exam?.room_number}</TableCell>
+                  <TableCell>{d.room}</TableCell>
+                  <TableCell>
+                    <div className="flex gap-1">
+                      {d.duty_types.map(type => (
+                        <Badge key={type} variant="secondary" className="text-xs">{type}</Badge>
+                      ))}
+                    </div>
+                  </TableCell>
                   <TableCell>
                     <Badge variant="outline" className={statusColor(d.status)}>{d.status}</Badge>
                   </TableCell>

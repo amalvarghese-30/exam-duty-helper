@@ -11,17 +11,23 @@ import {
     Settings,
     AlertCircle,
     HelpCircle,
-    Download
+    Download,
+    Zap,
+    Users,
+    Lock,
+    Activity
 } from 'lucide-react';
 
-// Import Phase 3 Components (to be created)
-import { AllocationSimulator } from './AllocationSimulator/SimulationPanel';
-import { FairnessAnalyticsBoard } from './FairnessAnalytics/FairnessScore';
-import { SwapRecommendationPanel } from './SwapRecommendations/SwapCard';
-import { PolicyEditorPanel } from './PolicyEditor/PolicyForm';
-import { EmergencyHandlerPanel } from './EmergencyHandler/EmergencyPanel';
-import { TeacherExplanationView } from './TeacherExplanation/ExplanationCard';
-import { ExportPanel } from './Exports/ExportMenu';
+import { SimulationDashboard } from './AllocationSimulator/SimulationDashboard';
+import { FairnessAnalyticsDashboard } from './FairnessAnalytics/FairnessAnalyticsDashboard';
+import { SwapRecommendationPanel } from './SwapRecommendations/SwapRecommendationPanel';
+import { DepartmentPolicyEditor } from './PolicyEditor/DepartmentPolicyEditor';
+import { EmergencyReplacementPanel } from './EmergencyHandler/EmergencyReplacementPanel';
+import { AuditTrailViewer } from './AuditTrail/AuditTrailViewer';
+import { TeacherWorkloadDashboard } from './TeacherDashboard/TeacherWorkloadDashboard';
+import { DutyCalendar } from './CalendarView/DutyCalendar';
+import { DragDropAllocationPanel } from './ManualAllocation/DragDropAllocationPanel';
+import { AllocationExplainerPanel } from './Explainability/AllocationExplainerPanel';
 
 interface AdminDashboardRedesignedProps {
     currentAllocation: any;
@@ -199,7 +205,7 @@ export const AdminDashboardRedesigned: React.FC<AdminDashboardRedesignedProps> =
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="grid grid-cols-7 w-full">
                     <TabsTrigger value="simulator" className="gap-2">
-                        <Shuffle className="w-4 h-4" />
+                        <Zap className="w-4 h-4" />
                         <span className="hidden sm:inline">Simulate</span>
                     </TabsTrigger>
                     <TabsTrigger value="analytics" className="gap-2">
@@ -211,89 +217,76 @@ export const AdminDashboardRedesigned: React.FC<AdminDashboardRedesignedProps> =
                         <span className="hidden sm:inline">Swaps</span>
                     </TabsTrigger>
                     <TabsTrigger value="emergency" className="gap-2">
-                        <AlertCircle className="w-4 h-4" />
+                        <AlertTriangle className="w-4 h-4" />
                         <span className="hidden sm:inline">Emergency</span>
                     </TabsTrigger>
                     <TabsTrigger value="policies" className="gap-2">
                         <Settings className="w-4 h-4" />
                         <span className="hidden sm:inline">Policies</span>
                     </TabsTrigger>
-                    <TabsTrigger value="explanations" className="gap-2">
-                        <HelpCircle className="w-4 h-4" />
-                        <span className="hidden sm:inline">Explain</span>
+                    <TabsTrigger value="workload" className="gap-2">
+                        <Users className="w-4 h-4" />
+                        <span className="hidden sm:inline">Workload</span>
                     </TabsTrigger>
-                    <TabsTrigger value="exports" className="gap-2">
-                        <Download className="w-4 h-4" />
-                        <span className="hidden sm:inline">Export</span>
+                    <TabsTrigger value="audit" className="gap-2">
+                        <Lock className="w-4 h-4" />
+                        <span className="hidden sm:inline">Audit</span>
                     </TabsTrigger>
                 </TabsList>
 
                 {/* TAB 1: SIMULATOR */}
                 <TabsContent value="simulator" className="space-y-4">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Allocation Simulator</CardTitle>
-                            <CardDescription>
-                                Preview changes before applying to the live allocation
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <AllocationSimulator
-                                currentAllocation={currentAllocation}
-                                institution={institution}
-                                onApprove={loadMetrics}
-                            />
-                        </CardContent>
-                    </Card>
+                    <SimulationDashboard
+                        currentAllocation={currentAllocation}
+                        institution={institution}
+                        onApply={() => {
+                            loadMetrics();
+                            setActiveTab('analytics');
+                        }}
+                    />
                 </TabsContent>
 
                 {/* TAB 2: ANALYTICS */}
                 <TabsContent value="analytics" className="space-y-4">
-                    {allocationMetrics ? (
-                        <FairnessAnalyticsBoard
-                            metrics={allocationMetrics}
-                            allocation={currentAllocation}
-                        />
-                    ) : (
-                        <Card>
-                            <CardContent className="pt-6">Loading analytics...</CardContent>
-                        </Card>
-                    )}
+                    <FairnessAnalyticsDashboard
+                        currentAllocation={currentAllocation}
+                        institution={institution}
+                    />
                 </TabsContent>
 
                 {/* TAB 3: SWAPS */}
                 <TabsContent value="swaps" className="space-y-4">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Swap Recommendations</CardTitle>
-                            <CardDescription>
-                                Improve fairness by swapping duties between teachers
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <SwapRecommendationPanel
-                                allocation={currentAllocation}
-                                metrics={allocationMetrics}
-                                onSwapApplied={loadMetrics}
-                            />
-                        </CardContent>
-                    </Card>
+                    <SwapRecommendationPanel
+                        allocation={currentAllocation}
+                        institution={institution}
+                        onSwapApplied={() => {
+                            loadMetrics();
+                        }}
+                    />
                 </TabsContent>
 
                 {/* TAB 4: EMERGENCY */}
                 <TabsContent value="emergency" className="space-y-4">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Emergency Handler</CardTitle>
+                            <CardTitle className="flex items-center gap-2">
+                                <AlertTriangle className="h-5 w-5 text-orange-600" />
+                                Emergency Teacher Replacement
+                            </CardTitle>
                             <CardDescription>
-                                Handle teacher unavailability and find replacements
+                                Handle teacher unavailability and find immediate replacements
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <EmergencyHandlerPanel
+                            <EmergencyReplacementPanel
                                 allocation={currentAllocation}
+                                exam={null}
+                                currentTeacher={null}
                                 institution={institution}
-                                onReplaced={loadMetrics}
+                                onApply={() => {
+                                    loadMetrics();
+                                }}
+                                onClose={() => setActiveTab('analytics')}
                             />
                         </CardContent>
                     </Card>
@@ -301,56 +294,31 @@ export const AdminDashboardRedesigned: React.FC<AdminDashboardRedesignedProps> =
 
                 {/* TAB 5: POLICIES */}
                 <TabsContent value="policies" className="space-y-4">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Department Policies</CardTitle>
-                            <CardDescription>
-                                Configure institutional rules and constraints
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <PolicyEditorPanel
-                                institution={institution}
-                                onSave={loadMetrics}
-                            />
-                        </CardContent>
-                    </Card>
+                    <DepartmentPolicyEditor
+                        institution={institution}
+                        onDone={(updated) => {
+                            if (updated) {
+                                loadMetrics();
+                                setActiveTab('analytics');
+                            }
+                        }}
+                    />
                 </TabsContent>
 
-                {/* TAB 6: EXPLANATIONS */}
-                <TabsContent value="explanations" className="space-y-4">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Teacher Explanations</CardTitle>
-                            <CardDescription>
-                                View why each teacher received their assignments
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <TeacherExplanationView
-                                allocation={currentAllocation}
-                                metrics={allocationMetrics}
-                            />
-                        </CardContent>
-                    </Card>
+                {/* TAB 6: WORKLOAD */}
+                <TabsContent value="workload" className="space-y-4">
+                    <TeacherWorkloadDashboard
+                        institution={institution}
+                        user={user}
+                    />
                 </TabsContent>
 
-                {/* TAB 7: EXPORTS */}
-                <TabsContent value="exports" className="space-y-4">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Export Data</CardTitle>
-                            <CardDescription>
-                                Generate Excel, PDF, and ICS files
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <ExportPanel
-                                allocation={currentAllocation}
-                                metrics={allocationMetrics}
-                            />
-                        </CardContent>
-                    </Card>
+                {/* TAB 7: AUDIT TRAIL */}
+                <TabsContent value="audit" className="space-y-4">
+                    <AuditTrailViewer
+                        allocation={currentAllocation}
+                        institution={institution}
+                    />
                 </TabsContent>
             </Tabs>
 

@@ -82,10 +82,70 @@ class AllocationService {
     }
 
     /**
+     * Simulate allocation without saving to database
+     */
+    async simulateAllocationForInstitution(institutionId, options = {}) {
+        try {
+            const startTime = Date.now();
+
+            // Stage 1: Fetch all required data from MongoDB
+            console.log("🧪 Fetching data for simulation...");
+            const data = await this._fetchAllocationData(institutionId);
+
+            // Stage 2: Prepare payload for Python scheduler
+            const payload = this._prepareSchedulerPayload(data);
+
+            // Stage 3: Call Python scheduler (simulation endpoint)
+            console.log("🧪 Running simulation on Python scheduler...");
+            const allocationResult = await axios.post(
+                "http://localhost:5000/api/simulate",
+                payload,
+                { timeout: 60000 }
+            ).then(res => res.data);
+
+            if (allocationResult.status === "error") {
+                throw new Error(
+                    `Scheduler error: ${allocationResult.message}`
+                );
+            }
+
+            // Stage 4: Return results WITHOUT saving
+            const statistics = allocationResult.statistics || {};
+            const duration = Date.now() - startTime;
+
+            console.log(`✅ Simulation complete: ${statistics.allocated_exams}/${statistics.total_exams} exams`);
+
+            return {
+                status: "success",
+                mode: "simulation",
+                message: `Simulation: ${statistics.allocated_exams}/${statistics.total_exams} exams would be allocated`,
+                data: {
+                    allocated_exams: statistics.allocated_exams,
+                    total_exams: statistics.total_exams,
+                    success_rate: statistics.success_rate_percent,
+                    unallocated_exams: allocationResult.unallocated_exams || [],
+                    workload_statistics: statistics.workload_statistics || {},
+                    conflicts: allocationResult.conflicts || [],
+                    fix_suggestions: allocationResult.fix_suggestions || [],
+                    comparison: allocationResult.comparison || {},
+                    duration_ms: duration,
+                },
+            };
+        } catch (error) {
+            console.error("Simulation error:", error);
+            return {
+                status: "error",
+                message: error.message,
+                error: error.toString(),
+            };
+        }
+    }
+
+    /**
      * Fetch all data required for allocation
      */
     async _fetchAllocationData(institutionId) {
-        const [teachers, exams, leaves, policies] = await Promise.all([
+        const [teachers, exams, leaves, policies, lockedAllocations] = await Promise.all([
             Teacher.find({ institution_id: institutionId, is_active: true }),
             Exam.find({ institution_id: institutionId }),
             TeacherLeave.find(
@@ -93,6 +153,10 @@ class AllocationService {
                 "teacher_id leave_date reason type"
             ),
             DepartmentPolicy.find({ institution_id: institutionId, is_active: true }),
+            DutyAllocation.find(
+                { institution_id: institutionId, is_locked: true },
+                "exam_id teacher_id role"
+            ),
         ]);
 
         return {
@@ -100,6 +164,7 @@ class AllocationService {
             exams,
             leaves,
             policies,
+            lockedAllocations,
             institution_id: institutionId,
         };
     }
@@ -108,7 +173,7 @@ class AllocationService {
      * Transform MongoDB documents to scheduler payload format
      */
     _prepareSchedulerPayload(data) {
-        const { teachers, exams, leaves, policies } = data;
+        const { teachers, exams, leaves, policies, lockedAllocations } = data;
 
         // Transform teachers
         const transformedTeachers = teachers.map((teacher) => ({
@@ -125,26 +190,48 @@ class AllocationService {
             allowed_roles: teacher.allowed_roles || ["invigilator"],
         }));
 
-        // Transform exams
-        const transformedExams = exams.map((exam) => ({
-            _id: exam._id.toString(),
-            subject: exam.subject,
-            department: exam.department || "",
-            exam_date: exam.exam_date,
-            start_time: exam.start_time,
-            end_time: exam.end_time,
-            room_number: exam.room_number || "",
-            required_roles: exam.required_roles || { invigilator: 1 },
-            category: exam.category || "regular",
-        }));
+        // Create a map of locked allocations by exam_id
+        const lockedByExam = {};
+        (lockedAllocations || []).forEach((lock) => {
+            const examId = lock.exam_id.toString();
+            if (!lockedByExam[examId]) {
+                lockedByExam[examId] = [];
+            }
+            lockedByExam[examId].push({
+                teacher_id: lock.teacher_id.toString(),
+                role: lock.role,
+            });
+        });
 
-        // Transform leaves
-        const transformedLeaves = leaves.map((leave) => ({
-            teacher_id: leave.teacher_id.toString(),
-            leave_date: leave.leave_date,
-            reason: leave.reason || "",
-            type: leave.type || "leave",
-        }));
+        // Transform exams with locked allocations attached
+        const transformedExams = exams.map((exam) => {
+            const examDate = new Date(exam.exam_date);
+            const formattedDate = examDate.toISOString().split('T')[0];
+            return {
+                _id: exam._id.toString(),
+                subject: exam.subject,
+                department: exam.department || "",
+                exam_date: formattedDate,
+                start_time: exam.start_time,
+                end_time: exam.end_time,
+                room_number: exam.room_number || "",
+                required_roles: exam.required_roles || { invigilator: 1 },
+                category: exam.category || "regular",
+                locked_allocations: lockedByExam[exam._id.toString()] || [],
+            };
+        });
+
+        // Transform leaves (ensure dates are in YYYY-MM-DD format)
+        const transformedLeaves = leaves.map((leave) => {
+            const leaveDate = new Date(leave.leave_date);
+            const formattedDate = leaveDate.toISOString().split('T')[0];
+            return {
+                teacher_id: leave.teacher_id.toString(),
+                leave_date: formattedDate,
+                reason: leave.reason || "",
+                type: leave.type || "leave",
+            };
+        });
 
         // Transform policies
         const transformedPolicies = policies.map((policy) => ({
@@ -234,12 +321,17 @@ class AllocationService {
 
             const teachers = await Teacher.find({ institution_id: institutionId });
             const exams = await Exam.find({ institution_id: institutionId });
+            const leaves = await TeacherLeave.find({ institution_id: institutionId });
 
-            // Group by teacher
+            // Group by teacher to compute workload
             const teacherDuties = {};
-            for (const alloc of allocations) {
-                const teacherId = alloc.teacher_id.toString();
-                teacherDuties[teacherId] = (teacherDuties[teacherId] || 0) + 1;
+            const overloadedList = [];
+            const underloadedList = [];
+
+            for (const teacher of teachers) {
+                const teacherId = teacher._id.toString();
+                const duties = allocations.filter((a) => a.teacher_id.toString() === teacherId).length;
+                teacherDuties[teacherId] = duties;
             }
 
             // Compute statistics
@@ -247,11 +339,80 @@ class AllocationService {
             const mean = duties.length > 0 ? duties.reduce((a, b) => a + b) / duties.length : 0;
             const variance =
                 duties.length > 0
-                    ? duties.reduce((sum, d) => sum + Math.pow(d - mean, 2), 0) /
-                    duties.length
+                    ? duties.reduce((sum, d) => sum + Math.pow(d - mean, 2), 0) / duties.length
                     : 0;
+            const stdDev = Math.sqrt(variance);
+
+            // Identify overloaded teachers (mean + 1.5 * std_dev)
+            const overloadThreshold = mean + 1.5 * stdDev;
+            const underloadThreshold = mean * 0.5;
+
+            for (const teacher of teachers) {
+                const teacherId = teacher._id.toString();
+                const dutyCount = teacherDuties[teacherId] || 0;
+
+                if (dutyCount > overloadThreshold) {
+                    overloadedList.push({
+                        teacher_id: teacherId,
+                        name: teacher.name,
+                        duties: dutyCount,
+                    });
+                }
+                if (dutyCount < underloadThreshold && dutyCount < mean) {
+                    underloadedList.push({
+                        teacher_id: teacherId,
+                        name: teacher.name,
+                        duties: dutyCount,
+                    });
+                }
+            }
+
+            // Department distribution
+            const deptDistribution = {};
+            for (const teacher of teachers) {
+                const dept = teacher.department || "Unassigned";
+                if (!deptDistribution[dept]) {
+                    deptDistribution[dept] = { duties: [], avg_duties: 0, min: 0, max: 0 };
+                }
+                const teacherId = teacher._id.toString();
+                deptDistribution[dept].duties.push(teacherDuties[teacherId] || 0);
+            }
+
+            // Aggregate department stats
+            for (const dept in deptDistribution) {
+                const deptDuties = deptDistribution[dept].duties;
+                const avg = deptDuties.length > 0 ? deptDuties.reduce((a, b) => a + b) / deptDuties.length : 0;
+                deptDistribution[dept].avg_duties = Math.round(avg * 100) / 100;
+                deptDistribution[dept].min = Math.min(...deptDuties);
+                deptDistribution[dept].max = Math.max(...deptDuties);
+                delete deptDistribution[dept].duties; // Remove intermediate data
+            }
+
+            // Daily distribution
+            const dailyDistribution = {};
+            for (const exam of exams) {
+                const date = new Date(exam.exam_date).toISOString().split('T')[0];
+                dailyDistribution[date] = (dailyDistribution[date] || 0) + 1;
+            }
+
+            // Compute fairness score (0-100)
+            const allocationCount = allocations.length;
+            const totalSlots = exams.length;
+            const successRate = totalSlots > 0 ? (allocationCount / totalSlots) * 100 : 0;
+            const fairnessScore = Math.min(100, Math.round(
+                (successRate * 0.4) + // 40% success rate
+                (stdDev < 1 ? 60 : stdDev < 2 ? 40 : 20) // 60% variance (lower is better)
+            ));
 
             return {
+                fairness_score: fairnessScore,
+                workload_variance: Math.round(variance * 100) / 100,
+                mean_workload: Math.round(mean * 100) / 100,
+                std_dev: Math.round(stdDev * 100) / 100,
+                overloaded_teachers: overloadedList,
+                underloaded_teachers: underloadedList,
+                department_distribution: deptDistribution,
+                daily_distribution: dailyDistribution,
                 total_exams: exams.length,
                 allocated_exams: new Set([
                     ...allocations.map((a) => a.exam_id.toString()),
@@ -263,9 +424,9 @@ class AllocationService {
                 total_allocations: allocations.length,
                 workload_distribution: {
                     mean: Math.round(mean * 100) / 100,
-                    std_dev: Math.round(Math.sqrt(variance) * 100) / 100,
-                    min: Math.min(...duties),
-                    max: Math.max(...duties),
+                    std_dev: Math.round(stdDev * 100) / 100,
+                    min: Math.min(...duties, 0),
+                    max: Math.max(...duties, 0),
                 },
                 allocations_by_role: this._groupByRole(allocations),
                 allocations_by_status: this._groupByStatus(allocations),

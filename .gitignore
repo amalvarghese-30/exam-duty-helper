@@ -1,24 +1,114 @@
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# =========================
+# Environment Variables (Secrets)
+# =========================
+.env
+.env.*
+*.env
+
+# =========================
 # Logs
-logs
+# =========================
 *.log
+logs/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+# =========================
+# Database Files
+# =========================
+*.sqlite3
+*.db
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
+# =========================
+# Flask
+# =========================
+instance/
+.webassets-cache
+
+# =========================
+# Uploads / Generated Files
+# =========================
+uploads/
+exports/
+generated_reports/
+temp/
+tmp/
+
+# =========================
+# Node / Frontend (React / Vite / Next etc.)
+# =========================
+node_modules/
+dist/
+build/
+.next/
+.out/
+.cache/
+.vite/
+
+# =========================
+# Coverage / Testing
+# =========================
+.coverage
+coverage/
+htmlcov/
+pytest_cache/
+
+# =========================
+# IDE / Editor Files
+# =========================
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# =========================
+# OS Files
+# =========================
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+Thumbs.db
+
+# =========================
+# Jupyter / AI Experiments
+# =========================
+.ipynb_checkpoints/
+
+# =========================
+# Compiled Extensions
+# =========================
+*.so
+
+# =========================
+# Security Keys / Certificates
+# =========================
+*.pem
+*.key
+*.crt
+*.cert
+
+# =========================
+# Docker (optional)
+# =========================
+docker-compose.override.yml
+
+# =========================
+# Misc
+# =========================
+*.swp
+*.bak
+*.tmp

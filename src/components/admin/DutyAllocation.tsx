@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { Wand2, RefreshCw, Calendar as CalendarIcon } from 'lucide-react';
 
-const API = "http://localhost:5000";
+const API = "http://localhost:3000/api";
 
 interface Allocation {
   _id: string;

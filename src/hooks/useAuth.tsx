@@ -13,7 +13,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
 }
 
-const API = "http://localhost:5000";
+const API = "http://localhost:3000/api";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 

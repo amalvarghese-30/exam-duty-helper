@@ -1,44 +1,23 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import axios from 'axios';
 import { Card, CardContent } from '@/components/ui/card';
 import { ClipboardList, Calendar, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
-
-const API = "http://localhost:5000";
+import { TeacherDashboardService } from '@/services/TeacherDashboardService';
 
 export default function TeacherOverview() {
   const { user } = useAuth();
-  const [stats, setStats] = useState({ duties: 0, upcoming: 0, leaveDays: 0 });
+  const [stats, setStats] = useState({ total_duties: 0, upcoming_duties: 0, leave_days: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!user) return;
     const fetchData = async () => {
       try {
-        // Get teacher ID by email
-        const teacherRes = await axios.get(`${API}/teachers/email/${user.email}`);
-        const teacherId = teacherRes.data._id;
-
-        // Fetch duties for this teacher
-        const dutiesRes = await axios.get(`${API}/duties/teacher/${teacherId}`);
-        const duties = dutiesRes.data;
-
-        // Fetch leave dates
-        const leaveRes = await axios.get(`${API}/teacher-leave/${teacherId}`);
-        const leaveDates = leaveRes.data;
-
-        const today = new Date().toISOString().split('T')[0];
-        const upcomingDuties = duties.filter((d: any) => {
-          const examDate = d.exam?.exam_date;
-          return examDate && examDate >= today;
-        }).length;
-
-        setStats({
-          duties: duties.length,
-          upcoming: upcomingDuties,
-          leaveDays: leaveDates.length,
-        });
+        const response = await TeacherDashboardService.getTeacherStats();
+        if (response.success && response.data) {
+          setStats(response.data);
+        }
       } catch (error) {
         console.error('Failed to fetch teacher stats:', error);
         toast.error('Failed to load dashboard data');
@@ -50,9 +29,9 @@ export default function TeacherOverview() {
   }, [user]);
 
   const cards = [
-    { title: 'Total Duties', value: stats.duties, icon: <ClipboardList className="h-5 w-5" />, color: 'text-primary' },
-    { title: 'Upcoming', value: stats.upcoming, icon: <Calendar className="h-5 w-5" />, color: 'text-success' },
-    { title: 'Leave Days', value: stats.leaveDays, icon: <AlertCircle className="h-5 w-5" />, color: 'text-warning' },
+    { title: 'Total Duties', value: stats.total_duties, icon: <ClipboardList className="h-5 w-5" />, color: 'text-primary' },
+    { title: 'Upcoming', value: stats.upcoming_duties, icon: <Calendar className="h-5 w-5" />, color: 'text-success' },
+    { title: 'Leave Days', value: stats.leave_days, icon: <AlertCircle className="h-5 w-5" />, color: 'text-warning' },
   ];
 
   if (loading) {

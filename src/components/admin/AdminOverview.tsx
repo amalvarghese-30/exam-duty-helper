@@ -1,29 +1,25 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, Calendar, ClipboardList, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
-
-const API = "http://localhost:5000";
+import { AdminDashboardService } from '@/services/AdminDashboardService';
 
 export default function AdminOverview() {
-  const [stats, setStats] = useState({ teachers: 0, exams: 0, allocations: 0 });
+  const [stats, setStats] = useState({
+    total_teachers: 0,
+    exam_schedules: 0,
+    duties_allocated: 0,
+    pending_swaps: 0
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const [teachersRes, examsRes, dutiesRes] = await Promise.all([
-          axios.get(`${API}/teachers`),
-          axios.get(`${API}/exams`),
-          axios.get(`${API}/duties`),
-        ]);
-
-        setStats({
-          teachers: teachersRes.data.length,
-          exams: examsRes.data.length,
-          allocations: dutiesRes.data.length,
-        });
+        const response = await AdminDashboardService.getDashboardStats();
+        if (response.success && response.data) {
+          setStats(response.data);
+        }
       } catch (error) {
         console.error('Failed to fetch stats:', error);
         toast.error('Failed to load dashboard stats');
@@ -35,10 +31,10 @@ export default function AdminOverview() {
   }, []);
 
   const cards = [
-    { title: 'Total Teachers', value: stats.teachers, icon: <Users className="h-5 w-5" />, color: 'text-primary' },
-    { title: 'Exam Schedules', value: stats.exams, icon: <Calendar className="h-5 w-5" />, color: 'text-success' },
-    { title: 'Duties Allocated', value: stats.allocations, icon: <ClipboardList className="h-5 w-5" />, color: 'text-accent' },
-    { title: 'Pending Swaps', value: 0, icon: <AlertTriangle className="h-5 w-5" />, color: 'text-warning' },
+    { title: 'Total Teachers', value: stats.total_teachers, icon: <Users className="h-5 w-5" />, color: 'text-primary' },
+    { title: 'Exam Schedules', value: stats.exam_schedules, icon: <Calendar className="h-5 w-5" />, color: 'text-success' },
+    { title: 'Duties Allocated', value: stats.duties_allocated, icon: <ClipboardList className="h-5 w-5" />, color: 'text-accent' },
+    { title: 'Pending Swaps', value: stats.pending_swaps, icon: <AlertTriangle className="h-5 w-5" />, color: 'text-warning' },
   ];
 
   if (loading) {

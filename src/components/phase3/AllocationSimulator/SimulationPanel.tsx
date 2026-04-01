@@ -28,16 +28,12 @@ export const AllocationSimulator: React.FC<SimulationPanelProps> = ({
             setLoading(true);
             setError(null);
 
-            // Call Phase 3 API to run simulation
-            const response = await fetch('/api/phase3/simulations/run', {
+            // Call allocation API to run simulation
+            const response = await fetch('/api/allocations/simulate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     institution_id: institution._id,
-                    exam_ids: currentAllocation.exams?.map((e: any) => e._id) || [],
-                    teacher_ids: currentAllocation.teachers?.map((t: any) => t._id) || [],
-                    use_optimization: true,
-                    time_limit_seconds: 60,
                     scenario_name: 'Dashboard Simulation'
                 })
             });

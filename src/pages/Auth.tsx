@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { GraduationCap } from 'lucide-react';
 
-const API = "http://localhost:5000";
+const API = "http://localhost:3000/api";
 
 export default function Auth() {
   const { user, role, loading } = useAuth();

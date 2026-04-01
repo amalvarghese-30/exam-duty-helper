@@ -1,0 +1,8 @@
+flask
+python-dotenv
+google-genai
+numpy
+pandas
+scipy
+ortools
+pydantic

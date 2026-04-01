@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { toast } from 'sonner';
 import { Plus, Pencil, Trash2, Upload } from 'lucide-react';
 
-const API = "http://localhost:5000";
+const API = "http://localhost:3000/api";
 
 interface Exam {
   _id: string;
