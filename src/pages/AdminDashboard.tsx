@@ -14,6 +14,7 @@ const navItems = [
   { label: 'Teachers', href: '/admin/teachers', icon: <Users className="h-4 w-4" /> },
   { label: 'Exam Schedule', href: '/admin/exams', icon: <Calendar className="h-4 w-4" /> },
   { label: 'Duty Allocation', href: '/admin/allocation', icon: <ClipboardList className="h-4 w-4" /> },
+  { label: 'Fairness Dashboard', href: '/fairness-dashboard', icon: <BarChart3 className="h-4 w-4" /> },
 ];
 
 export default function AdminDashboard() {

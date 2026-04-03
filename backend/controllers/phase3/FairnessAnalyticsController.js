@@ -1,5 +1,6 @@
+console.log("✅ FairnessAnalyticsController loaded");
 const mongoose = require('mongoose');
-const { phase2Connector } = require('../services/Phase2Connector');
+const { phase2Connector } = require('../../services/Phase2Connector');
 
 /**
  * FairnessAnalyticsController - Handles fairness analysis endpoints
@@ -37,7 +38,15 @@ exports.getAnalytics = async (req, res) => {
         };
 
         // Call Python fairness analyzer
-        const fairnessAnalysis = await phase2Connector.analyzeFairness(mockAllocation);
+        let fairnessAnalysis = {};
+
+        try {
+            fairnessAnalysis =
+                await phase2Connector.analyzeFairness(mockAllocation);
+        } catch (err) {
+            console.log("⚠️ Phase2Connector failed, using fallback data");
+            fairnessAnalysis = {};
+        }
 
         const analytics = {
             fairness_score: fairnessAnalysis.fairness_score || 75,

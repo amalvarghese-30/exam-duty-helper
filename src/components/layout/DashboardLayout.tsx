@@ -13,6 +13,9 @@ interface NavItem {
   label: string;
   href: string;
   icon: ReactNode;
+  name: "Fairness Analytics",
+  path: "/admin/fairness",
+  icon: "BarChart3"
 }
 
 interface DashboardLayoutProps {

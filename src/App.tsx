@@ -9,6 +9,7 @@ import Auth from "./pages/Auth";
 import AdminDashboard, { AdminTeachersPage, AdminExamsPage, AdminAllocationPage } from "./pages/AdminDashboard";
 import TeacherDashboard, { TeacherDutiesPage, TeacherAvailabilityPage } from "./pages/TeacherDashboard";
 import NotFound from "./pages/NotFound";
+import FairnessDashboard from "./pages/FairnessDashboard";
 
 const queryClient = new QueryClient();
 
@@ -30,6 +31,14 @@ const App = () => (
             <Route path="/teacher" element={<ProtectedRoute requiredRole="teacher"><TeacherDashboard /></ProtectedRoute>} />
             <Route path="/teacher/duties" element={<ProtectedRoute requiredRole="teacher"><TeacherDutiesPage /></ProtectedRoute>} />
             <Route path="/teacher/availability" element={<ProtectedRoute requiredRole="teacher"><TeacherAvailabilityPage /></ProtectedRoute>} />
+            <Route
+              path="/fairness-dashboard"
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <FairnessDashboard />
+                </ProtectedRoute>
+              }
+            />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
