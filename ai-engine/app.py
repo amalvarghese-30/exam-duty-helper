@@ -11,24 +11,19 @@ def home():
 
 @app.route("/generate", methods=["POST"])
 def generate():
-
     data = request.json
+    
+    # 🧠 Step 1: Gemini parses the rules string into a JSON config
+    constraints = parse_rules(data["rules"])
 
-    teachers = data["teachers"]
-    exams = data["exams"]
-    rules = data["rules"]
+    # ⚙️ Step 2: The logic engine uses that JSON to build the roster
+    roster = generate_schedule(data["teachers"], data["exams"], constraints)
 
-    # 🧠 Step 1: NLP
-    constraints = parse_rules(rules)
-
-    # ⚙️ Step 2: Scheduling
-    roster = generate_schedule(teachers, exams)
-
-    # 🤖 Step 3: Explanation
+    # 🤖 Step 3: Gemini explains the result
     explanation = explain_schedule(roster)
 
     return jsonify({
-        "constraints": constraints,
+        "interpreted_constraints": constraints, # Show this in UI to prove AI worked
         "roster": roster,
         "explanation": explanation
     })

@@ -1,31 +1,46 @@
-from google import genai
-import os
-from dotenv import load_dotenv
 import json
+import os
+from google import genai
+from dotenv import load_dotenv
 
 load_dotenv()
-
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 def parse_rules(rule_text):
-
     prompt = f"""
-Convert the following exam scheduling rules into JSON constraints.
+    You are a Logic Engine. Convert the following human rules into a JSON configuration for a scheduling algorithm.
+    
+    Rules provided:
+    {rule_text}
 
-Rules:
-{rule_text}
-
-Return ONLY valid JSON.
-"""
+    Return ONLY a JSON object with this exact structure:
+    {{
+      "avoid_own_subject": boolean,
+      "max_duties_per_day": int,
+      "equalize_workload": boolean,
+      "ignore_leave_status": boolean
+      "custom_restrictions": "string containing any specific names, departments, or unique constraints mentioned"
+    }}
+    """
 
     response = client.models.generate_content(
         model="gemini-2.5-flash",
         contents=prompt
     )
-
-    text = response.text.strip()
-
+    
+    text = response.text.strip().replace("```json", "").replace("```", "")
     try:
-        return json.loads(text)
+        data = json.loads(text)
+        # Ensure the key exists even if AI forgets it
+        if "custom_restrictions" not in data:
+            data["custom_restrictions"] = ""
+        return data
     except:
-        return {"raw_output": text}
+        # Safe defaults if AI output fails
+        return {
+            "avoid_own_subject": True,
+            "max_duties_per_day": 1,
+            "equalize_workload": True,
+            "ignore_leave_status": False,
+            "custom_restrictions": ""
+        }
