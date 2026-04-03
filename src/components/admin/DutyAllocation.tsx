@@ -9,6 +9,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Wand2, RefreshCw, Calendar as CalendarIcon, Info } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { Download } from 'lucide-react';
 
 const API = "http://localhost:5000";
 
@@ -78,6 +81,34 @@ export default function DutyAllocation() {
     }
   };
 
+  const downloadPDF = () => {
+    const doc = new jsPDF();
+    
+    doc.setFontSize(18);
+    doc.text("Exam Duty Allocation Schedule", 14, 20);
+    doc.setFontSize(11);
+    doc.setTextColor(100);
+    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30);
+
+    const tableRows = allocations.map(a => [
+      a.teacher?.name || 'Unassigned',
+      a.exam?.subject || '—',
+      a.exam?.exam_date ? new Date(a.exam.exam_date).toLocaleDateString() : '—',
+      `${a.exam?.start_time?.slice(0, 5)} - ${a.exam?.end_time?.slice(0, 5)}`,
+      a.exam?.room_number || '—'
+    ]);
+
+    autoTable(doc, {
+      head: [['Teacher', 'Subject', 'Date', 'Time', 'Room']],
+      body: tableRows,
+      startY: 35,
+      theme: 'grid',
+      headStyles: { fillColor: [59, 130, 246] }, // Corrected blue color format
+    });
+
+    doc.save(`Exam_Schedule_${new Date().toISOString().split('T')[0]}.pdf`);
+  };
+
   const statusColor = (s: string) => {
     if (s === 'assigned') return 'bg-primary/10 text-primary border-primary/20';
     if (s === 'accepted') return 'bg-success/10 text-success border-success/20';
@@ -132,6 +163,9 @@ export default function DutyAllocation() {
           <Button onClick={runAllocation} disabled={loading} className="shadow-md">
             <Wand2 className="h-4 w-4 mr-2" />
             {loading ? 'AI Processing...' : 'Run AI Auto-Allocate'}
+          </Button>
+          <Button variant="outline" onClick={downloadPDF} disabled={allocations.length === 0}>
+            <Download className="h-4 w-4 mr-2" /> Download PDF
           </Button>
           <Button variant="outline" onClick={clearAllocations}>
             <RefreshCw className="h-4 w-4 mr-2" /> Clear All
@@ -188,7 +222,35 @@ export default function DutyAllocation() {
       ) : (
         /* Calendar view logic here... */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-           {/* ... existing calendar map code ... */}
+           {Object.entries(calendarData).sort().map(([date, allocs]) => (
+            <Card key={date} className="shadow-card">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-semibold">
+                  {new Date(date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {allocs.map(a => (
+                  <div key={a._id} className="flex items-center justify-between rounded-lg bg-muted/50 p-2 text-sm">
+                    <div>
+                      <p className="font-medium text-foreground">{a.exam?.subject}</p>
+                      <p className="text-xs text-muted-foreground">{a.teacher?.name} • {a.exam?.room_number}</p>
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      {a.exam?.start_time?.slice(0, 5)}
+                    </span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          ))}
+          {Object.keys(calendarData).length === 0 && (
+            <Card className="col-span-full shadow-card">
+              <CardContent className="py-8 text-center text-muted-foreground">
+                No allocations to display in calendar view.
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
     </div>
