@@ -273,3 +273,48 @@ class ConstraintEngine:
         )
 
         return same_day_duties < max_daily
+
+    def apply_dynamic_rules(
+        self,
+        teacher,
+        exam,
+        assigned_duties
+    ):
+        """
+        Applies NLP-generated dynamic rules.
+        Safe fallback: returns True if no rules exist.
+        """
+
+        if not self.policies:
+            return True
+
+        for rule in self.policies:
+
+            if not isinstance(rule, dict):
+                continue
+
+            if rule.get("type") == "max_duties_per_day":
+
+                teacher_id = teacher["_id"]
+                exam_date = exam["exam_date"]
+
+                teacher_duty_list = assigned_duties.get(
+                    teacher_id,
+                    []
+                )
+
+                same_day_count = sum(
+                    1
+                    for duty in teacher_duty_list
+                    if duty.startswith(exam_date)
+                )
+
+                if same_day_count >= rule.get("value", 2):
+                    return False
+
+            if rule.get("type") == "no_same_department":
+
+                if teacher.get("department") == exam.get("department"):
+                    return False
+
+        return True

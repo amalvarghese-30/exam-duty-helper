@@ -6,6 +6,10 @@ Exposes allocation endpoints for the Node.js backend to call
 from flask import Flask, request, jsonify
 import logging
 from scheduler import SchedulingPipeline
+from nlp_policy_engine import NLPPolicyEngine
+
+# Import the email notifier
+from notifier import notify_assigned_teachers
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -27,7 +31,9 @@ def allocate():
         "teachers": [...],
         "exams": [...],
         "teacher_leaves": [...],
-        "policies": [...]
+        "policies": [...],
+        "rules_text": "...",
+        "send_emails": true  # Optional, defaults to true
     }
     """
     try:
@@ -45,10 +51,30 @@ def allocate():
         exams = data.get("exams", [])
         teacher_leaves = data.get("teacher_leaves", [])
         policies = data.get("policies", [])
+        
+        # Check if emails should be sent (default to true)
+        send_emails = data.get("send_emails", True)
+        
+        # NEW: Parse NLP rules if provided
+        rules_text = data.get("rules_text", "")
+        if rules_text:
+            try:
+                logger.info(f"Processing NLP rules: {rules_text[:100]}...")
+                dynamic_constraints = NLPPolicyEngine.convert_text_to_constraints(rules_text)
+                
+                if dynamic_constraints:
+                    logger.info(f"Generated {len(dynamic_constraints)} dynamic constraints")
+                    # Validate and add to policies
+                    validated = NLPPolicyEngine.validate_constraints(dynamic_constraints)
+                    policies.extend(validated)
+                    logger.info(f"Added {len(validated)} validated constraints to policies")
+                    
+            except Exception as e:
+                logger.warning(f"NLP policy parsing failed: {e}")
 
         logger.info(
             f"Received allocation request: {len(teachers)} teachers, "
-            f"{len(exams)} exams"
+            f"{len(exams)} exams, {len(policies)} policies"
         )
         
         # DEBUG: Log raw data before normalization
@@ -118,12 +144,42 @@ def allocate():
         result["conflicts"] = conflicts
         result["fix_suggestions"] = fix_suggestions
 
+        # ============================================================
+        # NEW: Send email notifications after successful allocation
+        # ============================================================
+        emails_sent = 0
+        if send_emails and result.get("allocated_duties"):
+            try:
+                logger.info("📧 Sending email notifications to teachers...")
+                
+                # Convert the allocated_duties to roster format for notifier
+                roster = []
+                for exam_id, exam_allocation in result["allocated_duties"].items():
+                    exam_subject = exam_allocation.get("subject", "Unknown Exam")
+                    exam_date = exam_allocation.get("date", "")
+                    
+                    for role, assignments in exam_allocation.get("roles", {}).items():
+                        for assignment in assignments:
+                            roster.append({
+                                "teacher": assignment.get("teacher_email") or assignment.get("teacher"),
+                                "exam": exam_subject,
+                                "date": exam_date,
+                                "role": role
+                            })
+                
+                # Get original teacher objects for email lookup
+                emails_sent = notify_assigned_teachers(roster, teachers, exams)
+                logger.info(f"✅ Sent {emails_sent} email notifications")
+            except Exception as e:
+                logger.error(f"Email notification failed: {e}")
+                # Don't fail the allocation if emails fail
+
         logger.info(
             f"Allocation complete: {result['statistics']['allocated_exams']}/"
             f"{result['statistics']['total_exams']} exams allocated"
         )
 
-        return jsonify({
+        response_data = {
             "status": result.get("status", "success"),
             "message": "Allocation completed",
             "allocated_duties": result["allocated_duties"],
@@ -131,13 +187,57 @@ def allocate():
             "unallocated_exams": result.get("unallocated_exams", []),
             "conflicts": conflicts,
             "fix_suggestions": fix_suggestions["suggestions"],
-        }), 200
+        }
+        
+        # Add email count to response if emails were sent
+        if send_emails:
+            response_data["emails_sent"] = emails_sent
+
+        return jsonify(response_data), 200
 
     except Exception as e:
         logger.error(f"Allocation error: {str(e)}")
         return jsonify({
             "status": "error",
             "message": str(e),
+        }), 500
+
+
+@app.route("/api/parse-rule", methods=["POST"])
+def parse_rule():
+    """
+    Parse a single natural language rule using Gemini
+    Returns structured JSON constraint
+    
+    Expected payload:
+    {
+        "text": "Avoid assigning Dr. Smith on Mondays"
+    }
+    """
+    try:
+        data = request.json
+        rule_text = data.get("text", "")
+        
+        if not rule_text:
+            return jsonify({
+                "status": "error",
+                "message": "No rule text provided"
+            }), 400
+            
+        constraints = NLPPolicyEngine.convert_text_to_constraints(rule_text)
+        
+        return jsonify({
+            "status": "success",
+            "original_text": rule_text,
+            "parsed_constraints": constraints,
+            "count": len(constraints)
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Parse rule error: {e}")
+        return jsonify({
+            "status": "error",
+            "message": str(e)
         }), 500
 
 
@@ -230,6 +330,24 @@ def simulate_allocation():
         exams = data.get("exams", [])
         teacher_leaves = data.get("teacher_leaves", [])
         policies = data.get("policies", [])
+        rules_text = data.get("rules_text", "")
+        
+        if rules_text:
+            try:
+                from gemini_parser import parse_rules
+        
+                logger.info("Parsing dynamic admin rules...")
+                parsed_rules = parse_rules(rules_text)
+        
+                if isinstance(parsed_rules, dict):
+                    policies.append(parsed_rules)
+        
+                elif isinstance(parsed_rules, list):
+                    policies.extend(parsed_rules)
+        
+            except Exception as e:
+                logger.warning(f"Rule parsing failed: {e}")
+                
         current_allocations = data.get("current_allocations", {})
 
         logger.info(
@@ -276,6 +394,16 @@ def simulate_allocation():
         simulated_result["conflicts"] = conflicts
         simulated_result["fix_suggestions"] = fix_suggestions
 
+        # ADD AI RISK PREDICTION
+        from simulation_predictor import predict_risk
+        try:
+            risk_prediction = predict_risk(simulated_result)
+            simulated_result["risk_prediction"] = risk_prediction
+            logger.info(f"Risk prediction: {risk_prediction.get('risk_level', 'unknown')} risk")
+        except Exception as e:
+            logger.warning(f"Risk prediction failed: {e}")
+            simulated_result["risk_prediction"] = {"error": str(e)}
+
         # Compare with current allocations if provided
         comparison = {}
         if current_allocations:
@@ -307,6 +435,7 @@ def simulate_allocation():
             "conflicts": conflicts,
             "fix_suggestions": fix_suggestions["suggestions"],
             "comparison": comparison,
+            "risk_prediction": simulated_result.get("risk_prediction", {})
         }), 200
 
     except Exception as e:
@@ -349,15 +478,14 @@ def get_swap_recommendations():
         from scheduler.swap_engine import SwapEngine
         from scheduler.constraints import ConstraintEngine
         from scheduler.scorer import ScoringEngine
+        from swap_advisor import suggest_swaps, explain_swap_benefit
         
         logger.info("🔄 Generating swap recommendations...")
         
-        # For swap engine, we need mock teachers/exams for constraint checking
-        # This is a simplified implementation
         current_allocation = data.get("current_allocation", {})
         teachers = data.get("teachers", [])
         
-        # Build a basic constraint engine for swap validation
+        # Build constraint engine for swap validation
         constraint_engine = ConstraintEngine(teachers, [], [], [])
         scoring_engine = ScoringEngine(teachers, [], [])
         swap_engine = SwapEngine(constraint_engine, scoring_engine)
@@ -370,6 +498,19 @@ def get_swap_recommendations():
             overload_threshold_std_dev=1.5
         )
         
+        # ADD AI-POWERED SWAP SUGGESTIONS
+        try:
+            ai_swaps = suggest_swaps(recommendations, teachers)
+            if ai_swaps:
+                recommendations["ai_recommendations"] = ai_swaps
+                
+                # Add explanations for each AI suggestion
+                for swap in ai_swaps:
+                    swap["explanation"] = explain_swap_benefit(swap, current_allocation)
+        except Exception as e:
+            logger.warning(f"AI swap suggestions failed: {e}")
+            recommendations["ai_recommendations"] = []
+        
         logger.info(
             f"✅ Found {len(recommendations.get('swap_recommendations', []))} swap opportunities"
         )
@@ -381,6 +522,53 @@ def get_swap_recommendations():
         
     except Exception as e:
         logger.error(f"Swap recommendation error: {str(e)}")
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
+@app.route("/api/teacher/chat", methods=["POST"])
+def teacher_chat():
+    """
+    AI-powered chat endpoint for teacher queries
+    
+    Expected payload:
+    {
+        "question": "Why do I have 5 duties?",
+        "teacher_data": {...},
+        "allocation_data": {...}
+    }
+    """
+    try:
+        data = request.json
+        
+        if not data.get("question"):
+            return jsonify({
+                "status": "error",
+                "message": "Missing question"
+            }), 400
+        
+        from teacher_chatbot import teacher_query
+        
+        teacher_data = data.get("teacher_data", {})
+        allocation_data = data.get("allocation_data", {})
+        
+        logger.info(f"Teacher chat query: {data['question'][:100]}...")
+        
+        response = teacher_query(
+            data["question"],
+            teacher_data,
+            allocation_data
+        )
+        
+        return jsonify({
+            "status": "success",
+            "data": response
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Teacher chat error: {str(e)}")
         return jsonify({
             "status": "error",
             "message": str(e)

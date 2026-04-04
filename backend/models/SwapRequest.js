@@ -126,21 +126,9 @@ const SwapRequestSchema = new mongoose.Schema(
 );
 
 // Indexes for efficient queries
-SwapRequestSchema.index({
-    institution_id: 1,
-    status: 1,
-});
-SwapRequestSchema.index({
-    teacher_a_id: 1,
-    status: 1,
-});
-SwapRequestSchema.index({
-    teacher_b_id: 1,
-    status: 1,
-});
-SwapRequestSchema.index({
-    institution_id: 1,
-    requested_at: -1,
-});
+SwapRequestSchema.index({ institution_id: 1, status: 1 });
+SwapRequestSchema.index({ teacher_a_id: 1, status: 1 });
+SwapRequestSchema.index({ teacher_b_id: 1, status: 1 });
+SwapRequestSchema.index({ institution_id: 1, requested_at: -1 });
 
 module.exports = mongoose.model("SwapRequest", SwapRequestSchema);

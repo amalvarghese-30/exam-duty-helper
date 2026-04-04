@@ -1,3 +1,4 @@
+// src/components/admin/phase3/AllocationManagement.tsx
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,7 +19,11 @@ interface Allocation {
     };
 }
 
-export const AllocationManagement: React.FC = () => {
+interface AllocationManagementProps {
+    onSelectAllocation?: (allocationId: string) => void;
+}
+
+export const AllocationManagement: React.FC<AllocationManagementProps> = ({ onSelectAllocation }) => {
     const [allocations, setAllocations] = useState<Allocation[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -38,6 +43,13 @@ export const AllocationManagement: React.FC = () => {
             setError(result.error || 'Failed to load allocations');
         }
         setLoading(false);
+    };
+
+    const handleSelectAllocation = (allocationId: string) => {
+        setSelectedAllocation(allocationId);
+        if (onSelectAllocation) {
+            onSelectAllocation(allocationId);
+        }
     };
 
     const getStatusColor = (status: string) => {
@@ -92,7 +104,7 @@ export const AllocationManagement: React.FC = () => {
                         key={allocation._id}
                         className={`cursor-pointer transition-all ${selectedAllocation === allocation._id ? 'ring-2 ring-blue-500' : ''
                             }`}
-                        onClick={() => setSelectedAllocation(allocation._id)}
+                        onClick={() => handleSelectAllocation(allocation._id)}
                     >
                         <CardHeader>
                             <CardTitle className="text-lg">
@@ -135,6 +147,7 @@ export const AllocationManagement: React.FC = () => {
                                     className="w-full"
                                     onClick={(e) => {
                                         e.stopPropagation();
+                                        handleSelectAllocation(allocation._id);
                                     }}
                                 >
                                     View Details

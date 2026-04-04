@@ -8,8 +8,8 @@ const router = express.Router();
 const TeacherDashboardController = require('../controllers/TeacherDashboardController');
 const { verifyToken } = require('../utils/authMiddleware');
 
-// Dashboard stats
-router.get('/dashboard/stats', verifyToken, TeacherDashboardController.getTeacherStats);
+// Dashboard stats - GET endpoint
+router.get('/stats', verifyToken, TeacherDashboardController.getTeacherStats);
 
 // Profile
 router.get('/profile', verifyToken, TeacherDashboardController.getTeacherProfile);

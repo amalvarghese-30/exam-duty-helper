@@ -1,3 +1,4 @@
+// src/components/teacher/TeacherAvailability.tsx
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import axios from 'axios';
@@ -26,23 +27,31 @@ export default function TeacherAvailability() {
 
   useEffect(() => {
     if (!user) return;
+
     const fetchTeacherAndLeave = async () => {
       try {
-        // Get teacher by email
-        const teacherRes = await axios.get(`${API}/teachers/email/${user.email}`);
+        // Get teacher by email - Use the correct endpoint
+        const teacherRes = await axios.get(`${API}/teacher/email/${user.email}`);
         const tid = teacherRes.data._id;
         setTeacherId(tid);
+
+        // Also store in localStorage for other components
+        localStorage.setItem('teacherId', tid);
+        localStorage.setItem('userEmail', user.email);
 
         // Fetch leave dates
         const leaveRes = await axios.get(`${API}/teacher-leave/${tid}`);
         setLeaveDates(leaveRes.data);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Failed to fetch teacher data:', error);
-        toast.error('Failed to load your data');
+        if (error.response?.status === 404) {
+          console.log('Teacher profile not found for email:', user.email);
+        }
       } finally {
         setLoading(false);
       }
     };
+
     fetchTeacherAndLeave();
   }, [user]);
 
@@ -90,16 +99,6 @@ export default function TeacherAvailability() {
     );
   }
 
-  if (!teacherId) {
-    return (
-      <Card className="shadow-card">
-        <CardContent className="py-8 text-center text-muted-foreground">
-          Your teacher profile is not linked yet. Please contact the Exam Cell.
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
     <div className="space-y-6 animate-fade-in">
       <Card className="shadow-card">
@@ -113,11 +112,19 @@ export default function TeacherAvailability() {
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1 space-y-1">
               <Label>Date</Label>
-              <Input type="date" value={newDate} onChange={e => setNewDate(e.target.value)} />
+              <Input
+                type="date"
+                value={newDate}
+                onChange={e => setNewDate(e.target.value)}
+              />
             </div>
             <div className="flex-1 space-y-1">
               <Label>Reason (optional)</Label>
-              <Input value={newReason} onChange={e => setNewReason(e.target.value)} placeholder="Personal leave" />
+              <Input
+                value={newReason}
+                onChange={e => setNewReason(e.target.value)}
+                placeholder="Personal leave"
+              />
             </div>
             <div className="flex items-end">
               <Button onClick={addLeave}>

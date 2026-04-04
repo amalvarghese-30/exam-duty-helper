@@ -1,14 +1,87 @@
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { BarChart3, DollarSign, Settings, Download, AlertCircle, Wand2, Lightbulb, TrendingUp } from 'lucide-react';
+import { toast } from 'sonner';
 import AllocationManagement from './AllocationManagement';
 import FairnessAnalysis from './FairnessAnalysis';
 import SimulationManager from './SimulationManager';
 import ExportManager from './ExportManager';
-import { BarChart3, DollarSign, Settings, Download, AlertCircle } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import ConversationalPolicyBox from './ConversationalPolicyBox';
+import SimulationRiskPanel from './SimulationRiskPanel';
+import AISwapAdvisorPanel from './AISwapAdvisorPanel';
 
 export const Phase3Dashboard: React.FC = () => {
     const [selectedAllocationId, setSelectedAllocationId] = useState<string | null>(null);
+    const [simulationRisk, setSimulationRisk] = useState<any>(null);
+    const [swapSuggestions, setSwapSuggestions] = useState<any>(null);
+
+    // Mock function to load simulation risk - replace with actual API call
+    const loadSimulationRisk = async (allocationId: string) => {
+        try {
+            // const response = await fetch(`/api/phase3/analytics/${allocationId}/risk`);
+            // const data = await response.json();
+            // setSimulationRisk(data);
+
+            // Mock data for demonstration
+            setSimulationRisk({
+                overload_probability: 35,
+                risk_level: "low",
+                risk_factors: [
+                    "Low workload variance across teachers",
+                    "No critical conflicts detected",
+                    "All constraints satisfied"
+                ],
+                recommendations: [
+                    "Current allocation looks balanced",
+                    "Monitor workload as new exams are added"
+                ],
+                confidence_score: 0.85
+            });
+        } catch (error) {
+            console.error("Failed to load risk prediction:", error);
+        }
+    };
+
+    // Mock function to load swap suggestions
+    const loadSwapSuggestions = async (allocationId: string) => {
+        try {
+            // const response = await fetch(`/api/phase3/swaps/${allocationId}/ai-suggestions`);
+            // const data = await response.json();
+            // setSwapSuggestions(data);
+
+            // Mock data for demonstration
+            setSwapSuggestions([
+                {
+                    swap_id: "swap_1",
+                    teacher_from: "Dr. Rajesh Kumar",
+                    teacher_to: "Dr. Priya Sharma",
+                    exam: "Data Structures",
+                    reasoning: "Dr. Sharma has lower workload (4 duties vs 8 duties) and is qualified for this exam",
+                    expected_improvement: 12.5,
+                    feasibility: "high"
+                },
+                {
+                    swap_id: "swap_2",
+                    teacher_from: "Dr. Vikram Singh",
+                    teacher_to: "Dr. Anjali Mehta",
+                    exam: "Calculus",
+                    reasoning: "Department balance would improve by assigning Mathematics department teacher",
+                    expected_improvement: 8.3,
+                    feasibility: "medium"
+                }
+            ]);
+        } catch (error) {
+            console.error("Failed to load swap suggestions:", error);
+        }
+    };
+
+    // Handle allocation selection
+    const handleAllocationSelect = (allocationId: string) => {
+        setSelectedAllocationId(allocationId);
+        loadSimulationRisk(allocationId);
+        loadSwapSuggestions(allocationId);
+    };
 
     return (
         <div className="space-y-6">
@@ -19,6 +92,26 @@ export const Phase3Dashboard: React.FC = () => {
                 </p>
             </div>
 
+            {/* AI Panels Row - Top Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <ConversationalPolicyBox />
+                <SimulationRiskPanel riskPrediction={simulationRisk} />
+            </div>
+
+            {/* AI Swap Advisor Panel */}
+            <AISwapAdvisorPanel
+                aiSuggestions={swapSuggestions}
+                onApplySwap={async (swapId) => {
+                    toast.success(`Swap ${swapId} applied successfully`);
+                    // Refresh data after swap
+                    if (selectedAllocationId) {
+                        await loadSwapSuggestions(selectedAllocationId);
+                        await loadSimulationRisk(selectedAllocationId);
+                    }
+                }}
+            />
+
+            {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Card>
                     <CardHeader className="pb-2">
@@ -61,6 +154,7 @@ export const Phase3Dashboard: React.FC = () => {
                 </Card>
             </div>
 
+            {/* Main Tabs */}
             <Tabs defaultValue="allocations" className="space-y-6">
                 <TabsList className="grid w-full grid-cols-5">
                     <TabsTrigger value="allocations" className="flex items-center gap-2">
@@ -98,7 +192,7 @@ export const Phase3Dashboard: React.FC = () => {
                 </TabsList>
 
                 <TabsContent value="allocations">
-                    <AllocationManagement />
+                    <AllocationManagement onSelectAllocation={handleAllocationSelect} />
                 </TabsContent>
 
                 <TabsContent value="fairness">
@@ -157,6 +251,33 @@ export const Phase3Dashboard: React.FC = () => {
                         </CardHeader>
                         <CardContent className="space-y-6">
                             <div className="space-y-4">
+                                <div>
+                                    <h4 className="font-semibold mb-2 flex items-center gap-2">
+                                        <Wand2 className="h-4 w-4 text-primary" />
+                                        Conversational Rule Editor
+                                    </h4>
+                                    <p className="text-sm text-gray-600">
+                                        Write allocation rules in plain English. AI converts them to constraints automatically.
+                                    </p>
+                                </div>
+                                <div>
+                                    <h4 className="font-semibold mb-2 flex items-center gap-2">
+                                        <TrendingUp className="h-4 w-4 text-green-600" />
+                                        AI Risk Prediction
+                                    </h4>
+                                    <p className="text-sm text-gray-600">
+                                        Get predictive analysis of overload probability and fairness risks before applying changes.
+                                    </p>
+                                </div>
+                                <div>
+                                    <h4 className="font-semibold mb-2 flex items-center gap-2">
+                                        <Lightbulb className="h-4 w-4 text-yellow-500" />
+                                        Smart Swap Recommendations
+                                    </h4>
+                                    <p className="text-sm text-gray-600">
+                                        AI-powered swap suggestions to improve workload distribution and fairness.
+                                    </p>
+                                </div>
                                 <div>
                                     <h4 className="font-semibold mb-2">📊 Allocations</h4>
                                     <p className="text-sm text-gray-600">

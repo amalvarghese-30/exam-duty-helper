@@ -5,6 +5,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import SimulationService from '@/services/phase3/SimulationService';
 import { AlertCircle, Play, CheckCircle, Clock, Trash2 } from 'lucide-react';
+import SimulationRiskPanel from "./SimulationRiskPanel";
 
 interface SimulationManagerProps {
     allocationId: string;
@@ -26,6 +27,7 @@ interface Simulation {
         status: string;
     };
     createdAt: string;
+    risk_prediction?: any;
 }
 
 export const SimulationManager: React.FC<SimulationManagerProps> = ({ allocationId }) => {
@@ -33,6 +35,7 @@ export const SimulationManager: React.FC<SimulationManagerProps> = ({ allocation
     const [loading, setLoading] = useState(false);
     const [running, setRunning] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [simulationResult, setSimulationResult] = useState<any>(null);
 
     useEffect(() => {
         loadSimulations();
@@ -63,6 +66,7 @@ export const SimulationManager: React.FC<SimulationManagerProps> = ({ allocation
         });
 
         if (result.success) {
+            setSimulationResult(result.data);
             await loadSimulations();
             setError(null);
         } else {
@@ -113,6 +117,11 @@ export const SimulationManager: React.FC<SimulationManagerProps> = ({ allocation
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>{error}</AlertDescription>
                 </Alert>
+            )}
+
+            {/* Risk Prediction Panel */}
+            {simulationResult?.risk_prediction && (
+                <SimulationRiskPanel riskPrediction={simulationResult.risk_prediction} />
             )}
 
             <Card>

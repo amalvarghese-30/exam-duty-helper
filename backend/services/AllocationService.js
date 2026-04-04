@@ -249,6 +249,7 @@ class AllocationService {
             exams: transformedExams,
             teacher_leaves: transformedLeaves,
             policies: transformedPolicies,
+            rules_text: data.rules_text || ""
         };
     }
 

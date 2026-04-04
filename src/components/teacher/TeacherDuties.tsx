@@ -32,7 +32,8 @@ export default function TeacherDuties() {
         }
       } catch (error) {
         console.error('Failed to fetch duties:', error);
-        toast.error('Failed to load your duties');
+        // Don't show error toast - just set empty array
+        setDuties([]);
       } finally {
         setLoading(false);
       }
@@ -43,6 +44,7 @@ export default function TeacherDuties() {
   const statusColor = (s: string) => {
     if (s === 'Upcoming') return 'bg-primary/10 text-primary border-primary/20';
     if (s === 'Completed') return 'bg-success/10 text-success border-success/20';
+    if (s === 'accepted') return 'bg-green-100 text-green-800';
     return 'bg-muted text-muted-foreground';
   };
 
@@ -76,18 +78,18 @@ export default function TeacherDuties() {
                 </TableCell>
               </TableRow>
             ) : (
-              duties.map(d => (
-                <TableRow key={d.exam_id}>
+              duties.map((d, idx) => (
+                <TableRow key={d.exam_id || idx}>
                   <TableCell className="font-medium">{d.subject_name || '—'}</TableCell>
                   <TableCell>{d.date ? new Date(d.date).toLocaleDateString() : '—'}</TableCell>
                   <TableCell className="text-muted-foreground">
                     {d.time_from?.slice(0, 5)} – {d.time_to?.slice(0, 5)}
                   </TableCell>
-                  <TableCell>{d.room}</TableCell>
+                  <TableCell>{d.room || '—'}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
-                      {d.duty_types.map(type => (
-                        <Badge key={type} variant="secondary" className="text-xs">{type}</Badge>
+                      {d.duty_types.map((type, i) => (
+                        <Badge key={i} variant="secondary" className="text-xs">{type}</Badge>
                       ))}
                     </div>
                   </TableCell>

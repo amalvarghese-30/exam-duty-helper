@@ -52,6 +52,9 @@ router.post("/", async (req, res) => {
 
     console.log("React → Node → Flask scheduler");
 
+    // ✅ FIX: Move this line INSIDE the route handler
+    const { rules_text = "", send_emails = true } = req.body;
+
     const teachers = await Teacher.find();
     const exams = await Exam.find();
     const leaves = await TeacherLeave.find();
@@ -62,13 +65,16 @@ router.post("/", async (req, res) => {
       });
     }
 
+    // ✅ FIX: Use send_emails in the request
     const response = await axios.post(
       "http://localhost:5000/api/allocate",
       {
         teachers,
         exams,
         teacher_leaves: leaves,
-        policies: []
+        policies: [],
+        rules_text,
+        send_emails   // ✅ Add this line
       }
     );
 
@@ -134,14 +140,7 @@ router.post("/", async (req, res) => {
               exam.exam_date
             );
 
-          if (isOnLeave) {
-
-            console.log(
-              `Skipping ${teacher.name} (leave on ${exam.exam_date})`
-            );
-
-            continue;
-          }
+          if (isOnLeave) continue;
 
           await DutyAllocation.create({
             teacher_id: teacher._id,
@@ -157,9 +156,6 @@ router.post("/", async (req, res) => {
     }
 
 
-    // =============================
-    // RETURN FINAL RESULT
-    // =============================
     const allocations = await DutyAllocation.find()
       .populate("teacher_id", "name department email")
       .populate("exam_id", "subject exam_date start_time end_time room_number")
@@ -167,17 +163,10 @@ router.post("/", async (req, res) => {
       .lean();
 
 
-    const formatted = allocations.map(a => ({
-      _id: a._id,
-      status: a.status,
-      teacher: a.teacher_id || null,
-      exam: a.exam_id || null
-    }));
-
-
     res.json({
       message: "AI Allocation completed successfully",
-      allocations: formatted
+      allocations,
+      emails_sent: response.data?.emails_sent || 0  // ✅ Optional: show how many emails sent
     });
 
   } catch (err) {

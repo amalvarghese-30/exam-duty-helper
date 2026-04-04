@@ -48,6 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem('userEmail', userData.email); // Add this line
       localStorage.setItem('role', userRole);
 
       setUser(userData);
@@ -67,6 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem('userEmail', userData.email); // Add this line
       localStorage.setItem('role', userRole);
 
       setUser(userData);

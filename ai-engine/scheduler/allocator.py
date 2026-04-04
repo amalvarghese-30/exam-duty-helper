@@ -7,6 +7,18 @@ from typing import List, Dict, Any, Optional, Tuple
 import logging
 from datetime import datetime
 
+# ADD THIS IMPORT
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+try:
+    from gemini_reviewer import GeminiFairnessReviewer
+    GEMINI_AVAILABLE = True
+except ImportError:
+    GEMINI_AVAILABLE = False
+    logger = logging.getLogger(__name__)
+    logger.warning("Gemini reviewer not available")
+
 logger = logging.getLogger(__name__)
 
 
@@ -32,6 +44,11 @@ class AllocationEngine:
         self.scorer = scoring_engine
         self.loader = loader
         self.allocation_log = []
+
+        if GEMINI_AVAILABLE:
+            self.explainer = GeminiFairnessReviewer()
+        else:
+            self.explainer = None
 
     def allocate_all_duties(
         self,
@@ -166,6 +183,32 @@ class AllocationEngine:
                 "role": role,
                 "score": float(score),
             }
+            
+            # ADD AI EXPLANATION
+            if self.explainer:
+                try:
+                    # Build fairness metrics for explanation
+                    fairness_metrics = {
+                        "mean": 2.0,  # Default, will be updated
+                        "std_dev": 0,
+                        "total_allocations": len(role_assignments)
+                    }
+                    
+                    explanation = self.explainer.generate_fairness_explanation(
+                        {"allocated_duties": {}},  # Simplified for now
+                        teacher_id,
+                        fairness_metrics
+                    )
+                    
+                    if explanation.get("status") == "success":
+                        assignment["ai_explanation"] = explanation.get("explanation", "")
+                    else:
+                        assignment["ai_explanation"] = f"Selected due to high score ({score:.2f})"
+                except Exception as e:
+                    logger.debug(f"Could not generate AI explanation: {e}")
+                    assignment["ai_explanation"] = f"Selected due to high score ({score:.2f})"
+            else:
+                assignment["ai_explanation"] = f"Selected due to high score ({score:.2f})"
 
             # Record assignment
             role_assignments.append(assignment)
@@ -185,6 +228,7 @@ class AllocationEngine:
                     "role": role,
                     "teacher": best_candidate["name"],
                     "score": float(score),
+                    "explanation": assignment.get("ai_explanation", "")
                 }
             )
 
@@ -193,7 +237,7 @@ class AllocationEngine:
             )
 
         return role_assignments
-
+    
     def _get_valid_candidates(
         self,
         teachers: List[Dict[str, Any]],
@@ -247,6 +291,15 @@ class AllocationEngine:
                     f"Rejected {teacher['name']}: daily duty limit exceeded"
                 )
                 continue
+
+            # Apply dynamic NLP rules (if provided)
+            if hasattr(self.constraints, "apply_dynamic_rules"):
+                if not self.constraints.apply_dynamic_rules(
+                    teacher,
+                    exam,
+                    assigned_duties
+                ):
+                    continue
 
             valid.append(teacher)
 
