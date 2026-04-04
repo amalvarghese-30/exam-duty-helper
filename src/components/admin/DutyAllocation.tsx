@@ -26,8 +26,9 @@ interface Allocation {
   teacher_id: string;
   exam_id: string;
   status: string;
+  class_name: string;
   teacher?: { name: string; department: string };
-  exam?: { subject: string; exam_date: string; start_time: string; end_time: string; room_number: string };
+  exam?: { subject: string; class_name: string; exam_date: string; start_time: string; end_time: string; room_number: string };
 }
 
 export default function DutyAllocation() {
@@ -83,30 +84,64 @@ export default function DutyAllocation() {
 
   const downloadPDF = () => {
     const doc = new jsPDF();
+    const classes = ["FY", "SY", "TY", "LY"];
+    let currentY = 45; // Start data after the header
+
+    // --- 1. COLLEGE HEADER (Text on Top) ---
+    doc.setFontSize(22);
+    doc.setTextColor(0, 0, 0);
+    doc.text("PILLAI COLLEGE OF ENGINEERING", 105, 15, { align: "center" });
     
-    doc.setFontSize(18);
-    doc.text("Exam Duty Allocation Schedule", 14, 20);
-    doc.setFontSize(11);
+    doc.setFontSize(12);
     doc.setTextColor(100);
-    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30);
+    doc.text("Examination Duty Chart", 105, 28, { align: "center" });
 
-    const tableRows = allocations.map(a => [
-      a.teacher?.name || 'Unassigned',
-      a.exam?.subject || '—',
-      a.exam?.exam_date ? new Date(a.exam.exam_date).toLocaleDateString() : '—',
-      `${a.exam?.start_time?.slice(0, 5)} - ${a.exam?.end_time?.slice(0, 5)}`,
-      a.exam?.room_number || '—'
-    ]);
+    // Professional Horizontal Line
+    doc.setLineWidth(0.5);
+    doc.line(14, 32, 196, 32); 
 
-    autoTable(doc, {
-      head: [['Teacher', 'Subject', 'Date', 'Time', 'Room']],
-      body: tableRows,
-      startY: 35,
-      theme: 'grid',
-      headStyles: { fillColor: [59, 130, 246] }, // Corrected blue color format
+    doc.setFontSize(10);
+    doc.text(`Report Generated: ${new Date().toLocaleString()}`, 14, 38);
+
+    // --- 2. CLASS SEPARATION LOGIC ---
+    classes.forEach((className) => {
+      // This is where the "Separating Class" magic happens
+      const sectionData = allocations.filter(a => a.class_name === className);
+
+      if (sectionData.length > 0) {
+        // Check for page overflow before starting a new section
+        if (currentY > 230) {
+          doc.addPage();
+          currentY = 20;
+        }
+
+        // Add the Section Sub-heading (e.g., CLASS: SY YEAR)
+        doc.setFontSize(14);
+        doc.setTextColor(59, 130, 246); 
+        doc.text(`CLASS: ${className}`, 14, currentY);
+
+        // Create a table for JUST this class
+        autoTable(doc, {
+          startY: currentY + 5,
+          head: [['Teacher', 'Subject', 'Date', 'Time', 'Room']],
+          body: sectionData.map(a => [
+            a.teacher?.name || 'Unassigned',
+            a.exam?.subject || '—',
+            a.exam?.exam_date ? new Date(a.exam.exam_date).toLocaleDateString() : '—',
+            `${a.exam?.start_time?.slice(0, 5)} - ${a.exam?.end_time?.slice(0, 5)}`,
+            a.exam?.room_number || '—'
+          ]),
+          theme: 'grid',
+          headStyles: { fillColor: [31, 41, 55] },
+          margin: { left: 14 },
+        });
+
+        // Update currentY so the next class starts below this table
+        currentY = (doc as any).lastAutoTable.finalY + 15;
+      }
     });
 
-    doc.save(`Exam_Schedule_${new Date().toISOString().split('T')[0]}.pdf`);
+    doc.save(`PCE_Exam_Duty_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   const statusColor = (s: string) => {

@@ -13,16 +13,35 @@ router.get("/", async (req, res) => {
   try {
     const allocations = await DutyAllocation.find()
       .populate("teacher_id", "name department email")
-      .populate("exam_id", "subject class_name exam_date start_time end_time room_number")
-      .sort({ allocated_at: -1 });
+      .populate("exam_id", "subject class_name exam_date start_time end_time room_number");
 
-    const formatted = allocations.map(a => ({
+    // 1. Map the data into your formatted structure first
+    let formatted = allocations.map(a => ({
       _id: a._id,
       status: a.status,
       teacher: a.teacher_id,
       exam: a.exam_id,
-      class: a.exam_id ? a.exam_id.class_name : "N/A"
+      class_name: a.exam_id ? a.exam_id.class_name : "N/A"
     }));
+
+    // 2. Apply the Triple-Sort (Class -> Date -> Time)
+    formatted.sort((a, b) => {
+      // Priority 1: Class Name (FY < SY < TY < LY)
+      const classOrder = { "FY": 1, "SY": 2, "TY": 3, "LY": 4 };
+      const classA = classOrder[a.class_name] || 99;
+      const classB = classOrder[b.class_name] || 99;
+      if (classA !== classB) return classA - classB;
+
+      // Priority 2: Exam Date
+      const dateA = new Date(a.exam?.exam_date || 0);
+      const dateB = new Date(b.exam?.exam_date || 0);
+      if (dateA - dateB !== 0) return dateA - dateB;
+
+      // Priority 3: Start Time
+      const timeA = a.exam?.start_time || "";
+      const timeB = b.exam?.start_time || "";
+      return timeA.localeCompare(timeB);
+    });
 
     res.json(formatted);
   } catch (err) {

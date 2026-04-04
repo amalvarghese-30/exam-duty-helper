@@ -13,14 +13,18 @@ client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 def send_single_mail(teacher_name, teacher_email, duty):
     """Drafts with Gemini and sends via SMTP"""
     prompt = f"""
-    Write a brief, professional email to {teacher_name} regarding their exam duty.
+    Write a brief, professional reminder email to {teacher_name} for their exam duty.
     Subject: {duty['exam_name']}
     Date: {duty['date']}
     Time: {duty['time']}
     Room: {duty['room']}
-    Mention they should arrive 15 mins early.
-    End the email with the sign-off: "Best Regards, PCE Exam Cell".
-    Write only the body text. No subject line.
+    Must include these points:
+    1. Arrive 15 minutes early.
+    2. Distribute question papers exactly on time.
+    3. Collect all answer sheets promptly at the end of the session.
+    
+    Sign-off: "Best Regards, PCE Exam Cell".
+    Write ONLY the body text.
     """
     
     try:
