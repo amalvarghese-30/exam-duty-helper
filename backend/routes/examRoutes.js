@@ -2,10 +2,14 @@ const express = require("express");
 const router = express.Router();
 const Exam = require("../models/Exam");
 
-// GET all exams
+// GET all exams - SORTED BY CLASS (FY->LY), THEN DATE, THEN TIME
 router.get("/", async (req, res) => {
     try {
-        const exams = await Exam.find().sort({ exam_date: 1 });
+        const exams = await Exam.find().sort({ 
+            class_name: 1,  // Then group by FY, SY, TY, LY
+            exam_date: 1,   // Sort by Date first
+            start_time: 1   // Then sort by morning vs afternoon
+        });
         res.json(exams);
     } catch (err) {
         res.status(500).json({ error: err.message });

@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Plus, Pencil, Trash2, Upload } from 'lucide-react';
 
@@ -14,6 +15,7 @@ const API = "http://localhost:5000";
 interface Exam {
   _id: string;
   subject: string;
+  class_name: string;
   exam_date: string;
   start_time: string;
   end_time: string;
@@ -26,7 +28,7 @@ export default function ExamScheduleManagement() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Exam | null>(null);
   const [form, setForm] = useState({
-    subject: '', exam_date: '', start_time: '', end_time: '', room_number: '', required_invigilators: 1
+    subject: '', class_name: '', exam_date: '', start_time: '', end_time: '', room_number: '', required_invigilators: 1
   });
   const [loading, setLoading] = useState(true);
 
@@ -45,7 +47,7 @@ export default function ExamScheduleManagement() {
   useEffect(() => { fetchExams(); }, []);
 
   const handleSave = async () => {
-    if (!form.subject || !form.exam_date || !form.start_time || !form.end_time) {
+    if (!form.subject || !form.class_name || !form.exam_date || !form.start_time || !form.end_time) {
       toast.error('Please fill all required fields');
       return;
     }
@@ -83,6 +85,7 @@ export default function ExamScheduleManagement() {
     setEditing(e);
     setForm({
       subject: e.subject,
+      class_name: e.class_name || '',
       exam_date: e.exam_date,
       start_time: e.start_time,
       end_time: e.end_time,
@@ -94,7 +97,7 @@ export default function ExamScheduleManagement() {
 
   const openNew = () => {
     setEditing(null);
-    setForm({ subject: '', exam_date: '', start_time: '', end_time: '', room_number: '', required_invigilators: 1 });
+    setForm({ subject: '', class_name: '', exam_date: '', start_time: '', end_time: '', room_number: '', required_invigilators: 1 });
     setDialogOpen(true);
   };
 
@@ -112,6 +115,7 @@ export default function ExamScheduleManagement() {
       headers.forEach((h, i) => { obj[h] = vals[i] || ''; });
       return {
         subject: obj['subject'] || obj['name'] || '',
+        class_name: obj['class'] || obj['class_name'] || 'FY',
         exam_date: obj['date'] || obj['exam_date'] || '',
         start_time: obj['start_time'] || obj['start'] || '09:00',
         end_time: obj['end_time'] || obj['end'] || '12:00',
@@ -170,6 +174,7 @@ export default function ExamScheduleManagement() {
           <TableHeader>
             <TableRow>
               <TableHead>Subject</TableHead>
+              <TableHead>Class</TableHead>
               <TableHead>Date</TableHead>
               <TableHead>Time</TableHead>
               <TableHead>Room</TableHead>
@@ -188,6 +193,7 @@ export default function ExamScheduleManagement() {
               exams.map(e => (
                 <TableRow key={e._id}>
                   <TableCell className="font-medium">{e.subject}</TableCell>
+                  <TableCell className="font-medium">{e.class_name || '—'}</TableCell>
                   <TableCell>{new Date(e.exam_date).toLocaleDateString()}</TableCell>
                   <TableCell className="text-muted-foreground">{e.start_time.slice(0, 5)} – {e.end_time.slice(0, 5)}</TableCell>
                   <TableCell>{e.room_number}</TableCell>
@@ -218,6 +224,20 @@ export default function ExamScheduleManagement() {
             <div className="space-y-2">
               <Label>Subject</Label>
               <Input value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} placeholder="Mathematics 101" />
+            </div>
+            <div className="space-y-2">
+              <Label>Class</Label>
+              <Select value={form.class_name} onValueChange={value => setForm({ ...form, class_name: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Class" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="FY">First Year</SelectItem>
+                  <SelectItem value="SY">Second Year</SelectItem>
+                  <SelectItem value="TY">Third Year</SelectItem>
+                  <SelectItem value="LY">Last Year</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">

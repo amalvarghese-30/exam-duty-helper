@@ -18,7 +18,8 @@ def send_single_mail(teacher_name, teacher_email, duty):
     Date: {duty['date']}
     Time: {duty['time']}
     Room: {duty['room']}
-    Mention they should arrive 15 mins early. 
+    Mention they should arrive 15 mins early.
+    End the email with the sign-off: "Best Regards, PCE Exam Cell".
     Write only the body text. No subject line.
     """
     
@@ -45,44 +46,24 @@ def send_single_mail(teacher_name, teacher_email, duty):
         return False
 
 def notify_assigned_teachers(roster, all_teachers, all_exams):
-    """
-    The manager function. 
-    roster: list of allocations (teacher is usually an email string)
-    all_teachers: the full list of teacher objects from the request
-    all_exams: the full list of exam objects from the request
-    """
     success_count = 0
-    
-    # 1. Create a lookup map so we can find names by email
-    # Map looks like: {"email@mes.ac.in": {"name": "Dr. Smith", ...}}
     teacher_map = {t['email']: t for t in all_teachers}
-
     exam_map = {f"{e['subject']}_{e['exam_date']}": e for e in all_exams}
+    
+    print("🚀 Starting Hybrid Notification System...")
 
-    for entry in roster:
-        # 2. Get the teacher identifier (could be string email or object)
-        raw_teacher = entry.get("teacher")
+    for index, entry in enumerate(roster):
+        teacher_email = entry.get("teacher")
+        if not teacher_email or teacher_email == "UNASSIGNED":
+            continue
+
+        # 1. Lookups
+        teacher_obj = teacher_map.get(teacher_email, {})
+        teacher_name = teacher_obj.get("name", "Professor")
         
-        if not raw_teacher or raw_teacher == "UNASSIGNED":
-            continue
-
-        # 3. Handle String vs Object
-        if isinstance(raw_teacher, str):
-            teacher_email = raw_teacher
-            teacher_obj = teacher_map.get(teacher_email, {})
-            teacher_name = teacher_obj.get("name", "Professor")
-        else:
-            teacher_email = raw_teacher.get("email")
-            teacher_name = raw_teacher.get("name", "Professor")
-
-        if not teacher_email:
-            continue
-
         exam_key = f"{entry.get('exam')}_{entry.get('date')}"
         exam_details = exam_map.get(exam_key, {})
 
-        # 4. Handle Exam Data (Matching your scheduler.py output keys)
-        # We use .get() with fallbacks to avoid crashes
         duty_info = {
             "exam_name": entry.get('exam', 'Scheduled Exam'),
             "date": entry.get('date', 'Upcoming Date'),
@@ -90,10 +71,45 @@ def notify_assigned_teachers(roster, all_teachers, all_exams):
             "room": exam_details.get('room_number', 'Main Hall')
         }
 
-        print(f"📩 Drafting & Sending to {teacher_name} ({teacher_email})...")
-        
-        if send_single_mail(teacher_name, teacher_email, duty_info):
+        # 🤖 2. HYBRID LOGIC: Only use AI for the first 2 emails
+        use_ai = (index < 2)
+
+        if use_ai:
+            print(f"✨ [AI DRAFT] Processing email for {teacher_name}...")
+            # We use our existing send_single_mail function
+            success = send_single_mail(teacher_name, teacher_email, duty_info)
+            # Short sleep to stay safe during the AI portion
+            time.sleep(6)
+        else:
+            print(f"⚡ [TEMPLATE] Fast-sending email to {teacher_name}...")
+            # Direct SMTP send without calling Gemini
+            success = send_template_mail(teacher_name, teacher_email, duty_info)
+            # Very short sleep (just for SMTP stability)
+            time.sleep(0.5)
+
+        if success:
             success_count += 1
-            time.sleep(6) # Safety delay
             
     return success_count
+
+def send_template_mail(name, email, duty):
+    """Fast SMTP send using a standard template (No AI call)"""
+    try:
+        msg = EmailMessage()
+        body = f"Dear {name},\n\nYou have been assigned invigilation duty.\n\n" \
+               f"Subject: {duty['exam_name']}\nDate: {duty['date']}\n" \
+               f"Time: {duty['time']}\nRoom: {duty['room']}\n\n" \
+               f"Please arrive 15 mins early.\n\nRegards,\nExam Cell"
+        
+        msg.set_content(body)
+        msg['Subject'] = f"Exam Duty: {duty['exam_name']}"
+        msg['From'] = f"Exam Cell <{os.getenv('EMAIL_USER')}>"
+        msg['To'] = email
+
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+            smtp.login(os.getenv("EMAIL_USER"), os.getenv("EMAIL_PASS"))
+            smtp.send_message(msg)
+        return True
+    except Exception as e:
+        print(f"❌ Template Error: {e}")
+        return False

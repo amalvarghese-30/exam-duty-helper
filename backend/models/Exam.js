@@ -7,6 +7,11 @@ const examSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    class_name: {
+    type: String, 
+    required: true, 
+    enum: ['FY', 'SY', 'TY', 'LY']
+    },
     exam_date: {
         type: String,
         required: true

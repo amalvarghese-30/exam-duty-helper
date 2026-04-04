@@ -187,6 +187,7 @@ export default function DutyAllocation() {
               <TableRow>
                 <TableHead>Teacher</TableHead>
                 <TableHead>Subject</TableHead>
+                <TableHead>Class</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead>Time</TableHead>
                 <TableHead>Room</TableHead>
@@ -205,6 +206,9 @@ export default function DutyAllocation() {
                   <TableRow key={a._id}>
                     <TableCell className="font-medium">{a.teacher?.name || '—'}</TableCell>
                     <TableCell>{a.exam?.subject || '—'}</TableCell>
+                    <TableCell className="font-bold text-blue-600">
+                      {a.exam?.class_name || "N/A"}
+                    </TableCell>
                     <TableCell>{a.exam?.exam_date ? new Date(a.exam.exam_date).toLocaleDateString() : '—'}</TableCell>
                     <TableCell className="text-muted-foreground">
                       {a.exam?.start_time?.slice(0, 5)} – {a.exam?.end_time?.slice(0, 5)}

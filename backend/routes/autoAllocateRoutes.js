@@ -13,14 +13,15 @@ router.get("/", async (req, res) => {
   try {
     const allocations = await DutyAllocation.find()
       .populate("teacher_id", "name department email")
-      .populate("exam_id", "subject exam_date start_time end_time room_number")
+      .populate("exam_id", "subject class_name exam_date start_time end_time room_number")
       .sort({ allocated_at: -1 });
 
     const formatted = allocations.map(a => ({
       _id: a._id,
       status: a.status,
       teacher: a.teacher_id,
-      exam: a.exam_id
+      exam: a.exam_id,
+      class: a.exam_id ? a.exam_id.class_name : "N/A"
     }));
 
     res.json(formatted);
