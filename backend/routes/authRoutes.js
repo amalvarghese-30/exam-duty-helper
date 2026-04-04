@@ -12,7 +12,7 @@ router.post("/register", async (req, res) => {
     console.log("📝 Registration request received:", req.body);
 
     try {
-        const { fullName, email, password } = req.body;
+        const { fullName, email, password, department, subject } = req.body;
 
         // Validate required fields
         if (!fullName || !email || !password) {
@@ -46,16 +46,20 @@ router.post("/register", async (req, res) => {
         await user.save();
         console.log("✅ User created successfully:", user._id);
 
-        // Create teacher profile automatically
+        // Create teacher profile automatically with department and subject
         try {
             await Teacher.create({
                 name: fullName,
                 email: email,
-                department: "",
-                subject: "",
-                totalDuties: 0
+                department: department || "",
+                subject: subject || "",
+                totalDuties: 0,
+                seniority_years: 0,
+                reliability_score: 0.8,
+                allowed_roles: ["invigilator"],
+                is_active: true
             });
-            console.log("✅ Teacher profile created for:", email);
+            console.log("✅ Teacher profile created for:", email, "Dept:", department, "Subject:", subject);
         } catch (teacherErr) {
             console.log("⚠️ Teacher profile creation failed:", teacherErr.message);
             // Don't fail registration if teacher profile creation fails
@@ -124,6 +128,14 @@ router.post("/login", async (req, res) => {
             });
         }
 
+        // Fetch teacher profile for additional info
+        let teacher = null;
+        try {
+            teacher = await Teacher.findOne({ email });
+        } catch (err) {
+            console.log("⚠️ Could not fetch teacher profile:", err.message);
+        }
+
         const token = jwt.sign(
             {
                 id: user._id,
@@ -142,7 +154,9 @@ router.post("/login", async (req, res) => {
             user: {
                 id: user._id,
                 email: user.email,
-                name: user.fullName
+                name: user.fullName,
+                department: teacher?.department || "",
+                subject: teacher?.subject || ""
             }
         });
 

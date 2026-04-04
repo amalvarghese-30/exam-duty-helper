@@ -1,5 +1,5 @@
-// src/components/teacher/TeacherChatAssistant.tsx
-import { useState } from "react";
+// src/components/teacher/TeacherChatAssistant.tsx (Refined - Clean Chat UI)
+import { useState, useRef, useEffect } from "react";
 import axios from "axios";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Bot, Send, Loader2, User, Sparkles, MessageSquare, HelpCircle, Trash2 } from "lucide-react";
+import { Bot, Send, Loader2, User, Sparkles, MessageSquare, HelpCircle } from "lucide-react";
 
 const API = "http://localhost:3000/api";
 
@@ -24,7 +24,6 @@ const suggestedQuestions = [
     "How are duties distributed fairly?",
     "Can I request a swap?",
     "What happens if I'm on leave?",
-    "Why was I assigned to this exam?",
     "How does the allocation algorithm work?"
 ];
 
@@ -39,6 +38,11 @@ export default function TeacherChatAssistant() {
         }
     ]);
     const [loading, setLoading] = useState(false);
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [messages]);
 
     const askAI = async () => {
         if (!question.trim()) {
@@ -46,7 +50,6 @@ export default function TeacherChatAssistant() {
             return;
         }
 
-        // Add user message
         const userMessage: Message = {
             id: Date.now().toString(),
             role: "user",
@@ -60,7 +63,7 @@ export default function TeacherChatAssistant() {
         try {
             const token = localStorage.getItem('token');
             const res = await axios.post(
-                `${API}/teacher/chat`,
+                `${API}/teacher/chat/ask`,
                 { question },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
@@ -68,19 +71,17 @@ export default function TeacherChatAssistant() {
             const assistantMessage: Message = {
                 id: (Date.now() + 1).toString(),
                 role: "assistant",
-                content: res.data.reply || res.data.data?.answer || "I'm not sure how to answer that. Please try rephrasing your question.",
+                content: res.data.data?.answer || "I'm not sure how to answer that. Please try rephrasing your question.",
                 timestamp: new Date(),
                 category: res.data.data?.category,
             };
             setMessages(prev => [...prev, assistantMessage]);
-
         } catch (err: any) {
             console.error("Chat error:", err);
-
             const errorMessage: Message = {
                 id: (Date.now() + 1).toString(),
                 role: "assistant",
-                content: err.response?.data?.message || "Sorry, I'm having trouble connecting right now. Please try again later or contact your administrator.",
+                content: err.response?.data?.message || "Sorry, I'm having trouble connecting right now. Please try again later.",
                 timestamp: new Date(),
             };
             setMessages(prev => [...prev, errorMessage]);
@@ -88,18 +89,6 @@ export default function TeacherChatAssistant() {
         } finally {
             setLoading(false);
         }
-    };
-
-    const clearChat = () => {
-        setMessages([
-            {
-                id: "welcome",
-                role: "assistant",
-                content: "Chat cleared! Ask me anything about your exam duties.",
-                timestamp: new Date(),
-            }
-        ]);
-        toast.success("Chat cleared");
     };
 
     const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -114,7 +103,7 @@ export default function TeacherChatAssistant() {
     };
 
     return (
-        <Card className="shadow-card h-[calc(100vh-200px)] sticky top-6 flex flex-col">
+        <Card className="shadow-sm border-0 h-[calc(100vh-200px)] sticky top-6 flex flex-col">
             <CardHeader className="pb-3 border-b">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -122,54 +111,45 @@ export default function TeacherChatAssistant() {
                             <Bot className="h-4 w-4 text-primary" />
                         </div>
                         <div>
-                            <CardTitle className="text-base">Allocation Assistant</CardTitle>
-                            <CardDescription className="text-xs">
-                                Ask anything about your duties
-                            </CardDescription>
+                            <CardTitle className="text-sm">Allocation Assistant</CardTitle>
+                            <CardDescription className="text-xs">Ask anything about your duties</CardDescription>
                         </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                        <Badge variant="outline" className="gap-1 text-[10px]">
-                            <Sparkles className="h-3 w-3" />
-                            AI
-                        </Badge>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={clearChat}>
-                            <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                    </div>
+                    <Badge variant="outline" className="gap-1 text-[10px]">
+                        <Sparkles className="h-3 w-3" />
+                        AI
+                    </Badge>
                 </div>
             </CardHeader>
 
             {/* Messages Container */}
-            <CardContent className="flex-1 overflow-y-auto p-4 space-y-4 min-h-[400px] max-h-[500px]">
+            <CardContent className="flex-1 overflow-y-auto p-4 space-y-4 min-h-[400px]">
                 {messages.map((msg) => (
                     <div
                         key={msg.id}
                         className={`flex gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                     >
                         {msg.role === "assistant" && (
-                            <Avatar className="h-8 w-8 flex-shrink-0">
+                            <Avatar className="h-7 w-7 flex-shrink-0">
                                 <AvatarFallback className="bg-primary/10 text-primary">
-                                    <Bot className="h-4 w-4" />
+                                    <Bot className="h-3.5 w-3.5" />
                                 </AvatarFallback>
                             </Avatar>
                         )}
 
                         <div className={`max-w-[80%] ${msg.role === "user" ? "order-1" : ""}`}>
                             <div
-                                className={`rounded-lg p-3 ${msg.role === "user"
+                                className={`rounded-lg p-3 text-sm ${msg.role === "user"
                                     ? "bg-primary text-primary-foreground"
                                     : "bg-muted"
                                     }`}
                             >
-                                <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                                <p className="whitespace-pre-wrap break-words">{msg.content}</p>
                             </div>
                             <div className="flex items-center gap-2 mt-1">
-                                <span className="text-xs text-muted-foreground">
-                                    {formatTime(msg.timestamp)}
-                                </span>
+                                <span className="text-xs text-muted-foreground">{formatTime(msg.timestamp)}</span>
                                 {msg.category && msg.role === "assistant" && (
-                                    <Badge variant="outline" className="text-[10px] px-1 py-0">
+                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                                         {msg.category}
                                     </Badge>
                                 )}
@@ -177,9 +157,9 @@ export default function TeacherChatAssistant() {
                         </div>
 
                         {msg.role === "user" && (
-                            <Avatar className="h-8 w-8 flex-shrink-0">
+                            <Avatar className="h-7 w-7 flex-shrink-0">
                                 <AvatarFallback className="bg-primary text-primary-foreground">
-                                    <User className="h-4 w-4" />
+                                    <User className="h-3.5 w-3.5" />
                                 </AvatarFallback>
                             </Avatar>
                         )}
@@ -188,9 +168,9 @@ export default function TeacherChatAssistant() {
 
                 {loading && (
                     <div className="flex gap-3 justify-start">
-                        <Avatar className="h-8 w-8">
+                        <Avatar className="h-7 w-7">
                             <AvatarFallback className="bg-primary/10">
-                                <Bot className="h-4 w-4 animate-pulse" />
+                                <Bot className="h-3.5 w-3.5 animate-pulse" />
                             </AvatarFallback>
                         </Avatar>
                         <div className="bg-muted rounded-lg p-3">
@@ -198,6 +178,7 @@ export default function TeacherChatAssistant() {
                         </div>
                     </div>
                 )}
+                <div ref={messagesEndRef} />
             </CardContent>
 
             {/* Suggested Questions */}

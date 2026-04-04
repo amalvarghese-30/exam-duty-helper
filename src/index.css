@@ -1,48 +1,35 @@
+/* src/index.css - Enhanced with better responsive utilities */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-
-
 @layer base {
   :root {
     --background: 220 20% 97%;
     --foreground: 220 30% 10%;
-
     --card: 0 0% 100%;
     --card-foreground: 220 30% 10%;
-
     --popover: 0 0% 100%;
     --popover-foreground: 220 30% 10%;
-
     --primary: 220 60% 45%;
     --primary-foreground: 0 0% 100%;
-
     --secondary: 220 15% 92%;
     --secondary-foreground: 220 30% 20%;
-
     --muted: 220 15% 94%;
     --muted-foreground: 220 10% 50%;
-
     --accent: 38 90% 55%;
     --accent-foreground: 38 90% 15%;
-
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
-
     --success: 142 70% 40%;
     --success-foreground: 0 0% 100%;
-
     --warning: 38 90% 55%;
     --warning-foreground: 38 90% 15%;
-
     --border: 220 15% 88%;
     --input: 220 15% 88%;
     --ring: 220 60% 45%;
-
-    --radius: 0.625rem;
-
+    --radius: 0.5rem;
     --sidebar-background: 220 30% 12%;
     --sidebar-foreground: 220 10% 85%;
     --sidebar-primary: 220 60% 55%;
@@ -51,48 +38,32 @@
     --sidebar-accent-foreground: 220 10% 90%;
     --sidebar-border: 220 20% 20%;
     --sidebar-ring: 220 60% 55%;
-
     --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
-
-    --shadow-sm: 0 1px 2px 0 hsl(220 30% 10% / 0.04);
-    --shadow-md: 0 4px 6px -1px hsl(220 30% 10% / 0.06), 0 2px 4px -2px hsl(220 30% 10% / 0.04);
-    --shadow-lg: 0 10px 15px -3px hsl(220 30% 10% / 0.08), 0 4px 6px -4px hsl(220 30% 10% / 0.04);
-    --shadow-card: 0 1px 3px 0 hsl(220 30% 10% / 0.06), 0 1px 2px -1px hsl(220 30% 10% / 0.04);
   }
 
   .dark {
     --background: 220 25% 8%;
     --foreground: 220 10% 92%;
-
     --card: 220 25% 12%;
     --card-foreground: 220 10% 92%;
-
     --popover: 220 25% 12%;
     --popover-foreground: 220 10% 92%;
-
     --primary: 220 60% 55%;
     --primary-foreground: 0 0% 100%;
-
     --secondary: 220 20% 18%;
     --secondary-foreground: 220 10% 85%;
-
     --muted: 220 20% 16%;
     --muted-foreground: 220 10% 55%;
-
     --accent: 38 85% 55%;
     --accent-foreground: 38 90% 95%;
-
     --destructive: 0 65% 45%;
     --destructive-foreground: 0 0% 100%;
-
     --success: 142 65% 40%;
     --success-foreground: 0 0% 100%;
-
     --border: 220 20% 20%;
     --input: 220 20% 20%;
     --ring: 220 60% 55%;
-
     --sidebar-background: 220 30% 6%;
     --sidebar-foreground: 220 10% 85%;
     --sidebar-primary: 220 60% 55%;
@@ -115,24 +86,21 @@
 }
 
 @layer utilities {
-  .glass-card {
-    @apply bg-card/80 backdrop-blur-sm border border-border shadow-[var(--shadow-card)];
-  }
-
-  .gradient-primary {
-    background: linear-gradient(135deg, hsl(var(--primary)), hsl(220 70% 55%));
-  }
-
-  .gradient-accent {
-    background: linear-gradient(135deg, hsl(var(--accent)), hsl(28 90% 55%));
-  }
-
   .animate-fade-in {
     animation: fadeIn 0.3s ease-out;
   }
 
   .animate-slide-up {
     animation: slideUp 0.4s ease-out;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }
 
@@ -155,5 +123,14 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* Responsive table handling */
+@media (max-width: 768px) {
+  .responsive-table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
   }
 }

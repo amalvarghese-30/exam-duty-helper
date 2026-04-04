@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { useNavigate } from "react-router-dom";
 import axios from 'axios';
 import { toast } from 'sonner';
 
@@ -85,9 +86,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('role');
+    localStorage.removeItem('userEmail');
+
     setUser(null);
     setRole(null);
+
     toast.success('Signed out successfully');
+
+    window.location.href = "/"; // redirect after logout
   };
 
   return (
