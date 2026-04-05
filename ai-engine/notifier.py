@@ -100,10 +100,14 @@ def send_template_mail(name, email, duty):
     """Fast SMTP send using a standard template (No AI call)"""
     try:
         msg = EmailMessage()
-        body = f"Dear {name},\n\nYou have been assigned invigilation duty.\n\n" \
+        body = f"Dear {name},\n\nThis is a formal notification regarding your assigned invigilation duty.\n\n" \
                f"Subject: {duty['exam_name']}\nDate: {duty['date']}\n" \
                f"Time: {duty['time']}\nRoom: {duty['room']}\n\n" \
-               f"Please arrive 15 mins early.\n\nRegards,\nExam Cell"
+               f"Instructions:\n"
+               f"1. Please report to the Exam Cell 15 minutes before the start time.\n"
+               f"2. Ensure question papers are distributed exactly on time.\n"
+               f"3. Collect all answer scripts promptly once the session concludes.\n\n"
+               f"Best Regards,\nPCE Exam Cell"
         
         msg.set_content(body)
         msg['Subject'] = f"Exam Duty: {duty['exam_name']}"
