@@ -16,26 +16,34 @@ export default function TeacherOverview() {
     if (!user) return;
     const fetchData = async () => {
       try {
-        // Get teacher ID by email
+        // 1. Get teacher data using email (No /api prefix based on your server.js)
         const teacherRes = await axios.get(`${API}/teachers/email/${user.email}`);
-        const teacherId = teacherRes.data._id;
+        const teacherData = teacherRes.data;
 
-        // Fetch duties for this teacher
-        const dutiesRes = await axios.get(`${API}/duties/teacher/${teacherId}`);
-        const duties = dutiesRes.data;
+        // 2. Fetch allocations (filtered by this specific teacher on the backend or frontend)
+        // Note: Based on your previous routes, this is where the duties live
+        const dutiesRes = await axios.get(`${API}/auto-allocate`); 
+        
+        // Filter duties for this specific teacher if the backend doesn't have a specific /teacher/:id route yet
+        const teacherDuties = dutiesRes.data.filter((d: any) => 
+          d.teacher?._id === teacherData._id || d.teacher?.email === user.email
+        );
 
-        // Fetch leave dates
-        const leaveRes = await axios.get(`${API}/teacher-leave/${teacherId}`);
+        // 3. Fetch leave dates
+        const leaveRes = await axios.get(`${API}/teacher-leave/${teacherData._id}`);
         const leaveDates = leaveRes.data;
 
-        const today = new Date().toISOString().split('T')[0];
-        const upcomingDuties = duties.filter((d: any) => {
-          const examDate = d.exam?.exam_date;
+        // 4. Calculate Upcoming
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Reset time for accurate date comparison
+
+        const upcomingDuties = teacherDuties.filter((d: any) => {
+          const examDate = d.exam?.exam_date ? new Date(d.exam.exam_date) : null;
           return examDate && examDate >= today;
         }).length;
 
         setStats({
-          duties: duties.length,
+          duties: teacherDuties.length,
           upcoming: upcomingDuties,
           leaveDays: leaveDates.length,
         });

@@ -29,13 +29,23 @@ export default function TeacherDuties() {
     if (!user) return;
     const fetchDuties = async () => {
       try {
-        // Get teacher by email
+        // 1. Get teacher by email (Removed /api)
         const teacherRes = await axios.get(`${API}/teachers/email/${user.email}`);
-        const teacherId = teacherRes.data._id;
+        const teacherData = teacherRes.data;
 
-        // Fetch duties for this teacher
-        const dutiesRes = await axios.get(`${API}/duties/teacher/${teacherId}`);
-        setDuties(dutiesRes.data);
+        // 2. Fetch all allocations from the correct endpoint
+        // Based on your server.js, allocations are likely here:
+        const dutiesRes = await axios.get(`${API}/auto-allocate`);
+
+        // 3. Filter the allocations for THIS specific teacher
+        // We check both the teacher object and the email for safety
+        const myDuties = dutiesRes.data.filter((d: any) => 
+          d.teacher_id === teacherData._id || 
+          d.teacher?.email === user.email ||
+          d.teacher === user.email // Depending on how your scheduler saves it
+        );
+
+        setDuties(myDuties);
       } catch (error) {
         console.error('Failed to fetch duties:', error);
         toast.error('Failed to load your duties');

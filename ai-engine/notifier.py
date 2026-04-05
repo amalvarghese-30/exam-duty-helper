@@ -103,10 +103,10 @@ def send_template_mail(name, email, duty):
         body = f"Dear {name},\n\nThis is a formal notification regarding your assigned invigilation duty.\n\n" \
                f"Subject: {duty['exam_name']}\nDate: {duty['date']}\n" \
                f"Time: {duty['time']}\nRoom: {duty['room']}\n\n" \
-               f"Instructions:\n"
-               f"1. Please report to the Exam Cell 15 minutes before the start time.\n"
-               f"2. Ensure question papers are distributed exactly on time.\n"
-               f"3. Collect all answer scripts promptly once the session concludes.\n\n"
+               f"Instructions:\n" \
+               f"1. Please report to the Exam Cell 15 minutes before the start time.\n" \
+               f"2. Ensure question papers are distributed exactly on time.\n" \
+               f"3. Collect all answer scripts promptly once the session concludes.\n\n" \
                f"Best Regards,\nPCE Exam Cell"
         
         msg.set_content(body)

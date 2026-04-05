@@ -16,7 +16,7 @@ export default function AdminOverview() {
         const [teachersRes, examsRes, dutiesRes] = await Promise.all([
           axios.get(`${API}/teachers`),
           axios.get(`${API}/exams`),
-          axios.get(`${API}/duties`),
+          axios.get(`${API}/auto-allocate`), // Updated endpoint name
         ]);
 
         setStats({
@@ -26,7 +26,10 @@ export default function AdminOverview() {
         });
       } catch (error) {
         console.error('Failed to fetch stats:', error);
-        toast.error('Failed to load dashboard stats');
+        // We don't want to show an error toast if it's just an empty database
+        if (error.response?.status !== 404) {
+          toast.error('Failed to load dashboard stats');
+        }
       } finally {
         setLoading(false);
       }
@@ -38,7 +41,6 @@ export default function AdminOverview() {
     { title: 'Total Teachers', value: stats.teachers, icon: <Users className="h-5 w-5" />, color: 'text-primary' },
     { title: 'Exam Schedules', value: stats.exams, icon: <Calendar className="h-5 w-5" />, color: 'text-success' },
     { title: 'Duties Allocated', value: stats.allocations, icon: <ClipboardList className="h-5 w-5" />, color: 'text-accent' },
-    { title: 'Pending Swaps', value: 0, icon: <AlertTriangle className="h-5 w-5" />, color: 'text-warning' },
   ];
 
   if (loading) {
