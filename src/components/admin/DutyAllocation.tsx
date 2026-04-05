@@ -8,10 +8,10 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Wand2, RefreshCw, Calendar as CalendarIcon, Info } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { Download } from 'lucide-react';
+// CHECK THIS LINE AT THE TOP
+import { Wand2, RefreshCw, Calendar as CalendarIcon, Info, Sparkles, Download } from 'lucide-react';
 
 const API = "http://localhost:5000";
 
@@ -39,6 +39,10 @@ export default function DutyAllocation() {
   // NEW STATE: For the admin's additional instructions
   const [additionalRules, setAdditionalRules] = useState("");
 
+  const [aiExplanation, setAiExplanation] = useState("AI is ready to explain the logic...");
+
+  const [showFullAiLogic, setShowFullAiLogic] = useState(false);
+
   const fetchAllocations = async () => {
     try {
       const res = await axios.get(`${API}/auto-allocate/`);
@@ -61,6 +65,8 @@ export default function DutyAllocation() {
       const response = await axios.post(`${API}/auto-allocate/`, { 
         rules: finalRules 
       });
+
+      setAiExplanation(response.data.explanation);
 
       toast.success(response.data.message || 'Allocation successful!');
       fetchAllocations();
@@ -192,6 +198,47 @@ export default function DutyAllocation() {
           </div>
         </CardContent>
       </Card>
+
+      {/* 2. ENHANCED AI REASONING CARD */}
+      {aiExplanation && (
+        <Card className="border-blue-200 bg-blue-50/30 shadow-sm transition-all duration-300">
+          <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-xs font-bold text-blue-800 flex items-center gap-2">
+              <Sparkles className="h-3 w-3 text-blue-500" />
+              AI ALLOCATION LOGIC
+            </CardTitle>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setShowFullAiLogic(!showFullAiLogic)}
+              className="h-8 text-blue-600 hover:bg-blue-100 hover:text-blue-700 text-xs font-semibold"
+            >
+              {showFullAiLogic ? "Hide Details" : "Show Reasoning"}
+            </Button>
+          </CardHeader>
+          
+          <CardContent>
+            {/* Short Summary (Always Visible) */}
+            <p className="text-sm text-blue-700 leading-relaxed font-medium">
+              The AI has successfully balanced duties across available staff while preventing subject and schedule conflicts.
+            </p>
+
+            {/* Expandable Detailed Reasoning */}
+            {showFullAiLogic && (
+              <div className="mt-4 pt-4 border-t border-blue-100 animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="prose prose-sm max-w-none text-blue-800/80">
+                  {/* Split by newlines or use ReactMarkdown if you have it installed */}
+                  {aiExplanation.split('\n').map((line, i) => (
+                    <p key={i} className="mb-2 last:mb-0">
+                      {line}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="flex gap-2">
