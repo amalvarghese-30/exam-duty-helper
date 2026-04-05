@@ -1,74 +1,57 @@
-AI Exam Duty Allocation System
+# AI-Based Exam Duty Allocation
 
-An intelligent web-based platform that automates exam invigilation duty assignment using constraint-based allocation logic. The system ensures fair workload distribution, avoids subject conflicts, respects teacher availability, and streamlines exam-cell operations.
+## 🎓 Academic Details
+- **Course:** Natural Language Processing (NLP)
+- **Class:** Semester VI (Third Year Engineering)
+- **College:** Pillai College of Engineering , You can learn more about the college by visiting the official website of Pillai College of Engineering. https://www.pce.ac.in/
 
-Project Overview
+## 📌 Overview
+The Exam Duty Helper is an intelligent administrative solution that automates the complex task of faculty invigilation scheduling. By utilizing a Distributed Full-Stack Pipeline, the system bridges the gap between natural language institutional policies and strict algorithmic scheduling. It allows administrators to input rules in plain English, which are then parsed by AI to generate a conflict-free, fair, and explainable duty roster.
 
-The AI Exam Duty Allocation System helps academic institutions automatically assign invigilation duties to teachers based on multiple constraints such as:
+## 🎯 Objective
+- Manual exam scheduling often leads to subject conflicts, unfair workload distribution, and administrative overhead. This project aims to:
 
-Subject conflict avoidance
-Teacher availability
-Leave records
-Fair workload balancing
-Exam timetable slots
+- Automate Constraint Satisfaction: Eliminate manual errors in checking teacher availability and subject expertise.
 
-The system reduces manual scheduling effort and improves transparency and efficiency in exam duty management.
+- Enable Natural Language Control: Allow non-technical admins to set complex rules (e.g., "Exclude Professor X from morning slots") using LLMs.
 
-Key Features
-Admin (Exam Cell)
-Upload exam timetable
-View teacher availability
-Run automatic duty allocation
-Monitor workload distribution
-Manage teacher records
-View allocation reports
-Teacher
-Register/Login securely
-View assigned duties
-Submit availability
-Apply for leave
-Track total duties assigned
-AI Allocation Logic
+- Provide Explainable AI (XAI): Generate human-readable justifications for every allocation to ensure transparency and trust among faculty.
 
-The system uses a constraint-based scheduling algorithm that:
+## 🧠 Technologies Used
+- Python
+- NLP Libraries (NLTK / spaCy / Transformers)
+- Machine Learning / Deep Learning
 
-Filters teachers unavailable during exam slot
-Removes teachers assigned to same subject exam
-Excludes teachers on leave
-Selects teacher with minimum duty count
-Updates workload dynamically
+## 📊 Dataset
+- Custom-generated synthetic data modeled after the PCE Exam patterns.
+- Description  
 
-This models a real-world Constraint Satisfaction Problem (CSP) commonly used in:
+## ⚙️ Installation
+Steps to run the project:
 
-Staff scheduling
-Exam timetabling
-Workforce optimization
-Resource allocation systems
-Tech Stack
-Frontend
-React
-TypeScript
-Vite
-Tailwind CSS
-React Router
-Axios
-ShadCN UI
-Recharts
-Backend
-Node.js
-Express.js
-MongoDB Atlas
-Mongoose
-JWT Authentication
-bcrypt password hashing
+```bash
+git clone <https://github.com/amalvarghese-30/exam-duty-helper.git>
+cd exam-duty-helper
+pip install -r requirements.txt
 
-AI Duty Allocation
+## ▶️ Usage
+How to run the project.
 
-Automatically assigns teachers to exams while ensuring:
+## 📈 Results
+- Accuracy / outputs / screenshots
 
-No teacher invigilates their own subject or if on leave.
-Duties are distributed fairly among all teachers.
-No teacher is assigned multiple times on the same date.
+## 🎥 Demo Video
+YouTube link here
 
-AI parses the rules, generates a roster, and redistributes duties if needed to maintain fairness.
+## 👥 Team Members
+- Name 1
+- Name 2
+- Name 3
 
+## 📌 GitHub Contributions
+- Name 1 – Contribution
+- Name 2 – Contribution
+- Name 3 – Contribution
+
+## 📚 References
+Any papers, articles, or resources used
