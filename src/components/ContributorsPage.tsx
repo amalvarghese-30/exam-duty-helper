@@ -19,55 +19,55 @@ const teamContributions = [
         role: 'Backend Developer'
     },
     {
-        member: 'Member 3',
+        member: 'Abhiram',
         contribution: 'Teacher Dashboard API (stats, duties, availability integration)',
         icon: <Layout className="h-5 w-5 text-green-500" />,
         role: 'API Developer'
     },
     {
-        member: 'Member 4',
+        member: 'Vyas',
         contribution: 'Admin Dashboard Metrics (allocation overview + exam statistics APIs)',
         icon: <Code2 className="h-5 w-5 text-orange-500" />,
         role: 'Full Stack Developer'
     },
     {
-        member: 'Member 5',
+        member: 'Christopher',
         contribution: 'NLP Policy Parser Integration (Gemini-based rule conversion to constraints)',
         icon: <Sparkles className="h-5 w-5 text-yellow-500" />,
         role: 'AI Engineer'
     },
     {
-        member: 'Member 6',
+        member: 'Abhin',
         contribution: 'Swap Recommendation Module (duty swap suggestion backend logic)',
         icon: <Shuffle className="h-5 w-5 text-indigo-500" />,
         role: 'Backend Developer'
     },
     {
-        member: 'Member 7',
+        member: 'Purva',
         contribution: 'Fairness Analytics Module (workload distribution analysis)',
         icon: <TrendingUp className="h-5 w-5 text-emerald-500" />,
         role: 'Data Analyst'
     },
     {
-        member: 'Member 8',
+        member: 'Priya',
         contribution: 'Simulation Risk Prediction Panel (allocation simulation interface)',
         icon: <Activity className="h-5 w-5 text-rose-500" />,
         role: 'Frontend Developer'
     },
     {
-        member: 'Member 9',
+        member: 'Aswin',
         contribution: 'Conversational Rule Editor UI (natural-language rule input interface)',
         icon: <MessageSquare className="h-5 w-5 text-cyan-500" />,
         role: 'UI/UX Developer'
     },
     {
-        member: 'Member 10',
+        member: 'Shreyash',
         contribution: 'Teacher AI Chat Assistant (teacher explanation chatbot integration)',
         icon: <Bot className="h-5 w-5 text-violet-500" />,
         role: 'AI Integration Specialist'
     },
     {
-        member: 'Member 11',
+        member: 'Aadinath',
         contribution: 'Allocation Simulation Dashboard (simulation result visualization)',
         icon: <BarChart3 className="h-5 w-5 text-teal-500" />,
         role: 'Frontend Developer'
