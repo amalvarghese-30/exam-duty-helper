@@ -80,6 +80,21 @@ export default function DashboardLayout({ children, navItems, title }: Dashboard
         </nav>
 
         <div className="border-t border-sidebar-border p-3">
+          {/* --- ADD THIS SECTION --- */}
+          <Link
+            to="/contributors"
+            onClick={() => setSidebarOpen(false)}
+            className={cn(
+              "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors mb-2",
+              location.pathname === '/contributors'
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+            )}
+          >
+            <Users className="h-4 w-4" />
+            Team Contributors
+          </Link>
+          {/* ------------------------ */}
           <div className="flex items-center gap-3 rounded-lg px-3 py-2 mb-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sidebar-accent text-xs font-bold text-sidebar-foreground">
               {user?.email?.charAt(0).toUpperCase()}
