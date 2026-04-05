@@ -15,6 +15,13 @@ const examSchema = new mongoose.Schema(
             required: true,
         },
 
+        class_name: {
+            type: String,
+            required: false,
+            enum: ['FY', 'SY', 'TY', 'LY'],
+            default: 'FY'
+        },
+
         department: {
             type: String,
             default: "",

@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
+import { Download } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import {
   Card,
   CardContent,
@@ -43,6 +46,7 @@ interface Allocation {
     end_time: string;
     room_number: string;
   };
+  class_name?: string;
 }
 
 export default function DutyAllocation() {
@@ -139,6 +143,62 @@ export default function DutyAllocation() {
       );
 
     }
+  };
+
+
+  const downloadPDF = () => {
+    const doc = new jsPDF();
+    const classes = ["FY", "SY", "TY", "LY"];
+    let currentY = 45;
+
+    // College Header
+    doc.setFontSize(22);
+    doc.setTextColor(0, 0, 0);
+    doc.text("PILLAI COLLEGE OF ENGINEERING", 105, 15, { align: "center" });
+
+    doc.setFontSize(12);
+    doc.setTextColor(100);
+    doc.text("Examination Duty Chart", 105, 28, { align: "center" });
+
+    doc.setLineWidth(0.5);
+    doc.line(14, 32, 196, 32);
+
+    doc.setFontSize(10);
+    doc.text(`Report Generated: ${new Date().toLocaleString()}`, 14, 38);
+
+    classes.forEach((className) => {
+      const sectionData = allocations.filter(a => a.class_name === className);
+
+      if (sectionData.length > 0) {
+        if (currentY > 230) {
+          doc.addPage();
+          currentY = 20;
+        }
+
+        doc.setFontSize(14);
+        doc.setTextColor(59, 130, 246);
+        doc.text(`CLASS: ${className}`, 14, currentY);
+
+        autoTable(doc, {
+          startY: currentY + 5,
+          head: [['Teacher', 'Subject', 'Date', 'Time', 'Room']],
+          body: sectionData.map(a => [
+            a.teacher?.name || 'Unassigned',
+            a.exam?.subject || '—',
+            a.exam?.exam_date ? new Date(a.exam.exam_date).toLocaleDateString() : '—',
+            `${a.exam?.start_time?.slice(0, 5)} - ${a.exam?.end_time?.slice(0, 5)}`,
+            a.exam?.room_number || '—'
+          ]),
+          theme: 'grid',
+          headStyles: { fillColor: [31, 41, 55] },
+          margin: { left: 14 },
+        });
+
+        currentY = (doc as any).lastAutoTable.finalY + 15;
+      }
+    });
+
+    doc.save(`PCE_Exam_Duty_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
 
@@ -284,6 +344,14 @@ export default function DutyAllocation() {
 
             </Button>
 
+            <Button
+              variant="outline"
+              onClick={downloadPDF}
+              disabled={allocations.length === 0}
+            >
+              <Download className="h-4 w-4 mr-2" /> Download PDF
+            </Button>
+
           </div>
 
         </CardContent>
@@ -346,6 +414,8 @@ export default function DutyAllocation() {
 
                 <TableHead>Subject</TableHead>
 
+                <TableHead>Class</TableHead>
+
                 <TableHead>Date</TableHead>
 
                 <TableHead>Time</TableHead>
@@ -365,7 +435,7 @@ export default function DutyAllocation() {
                 <TableRow>
 
                   <TableCell
-                    colSpan={6}
+                    colSpan={7}
                     className="text-center py-8 text-muted-foreground"
                   >
 
@@ -392,6 +462,10 @@ export default function DutyAllocation() {
 
                       {a.exam?.subject || "—"}
 
+                    </TableCell>
+
+                    <TableCell>
+                      {a.class_name || (a.exam as any)?.class_name || "—"}
                     </TableCell>
 
                     <TableCell>

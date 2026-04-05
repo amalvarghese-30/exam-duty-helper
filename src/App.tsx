@@ -10,6 +10,7 @@ import AdminDashboard, { AdminTeachersPage, AdminExamsPage, AdminAllocationPage 
 import TeacherDashboard, { TeacherDutiesPage, TeacherAvailabilityPage } from "./pages/TeacherDashboard";
 import NotFound from "./pages/NotFound";
 import FairnessDashboard from "./pages/FairnessDashboard";
+import ContributorsPage from "@/components/ContributorsPage";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +40,7 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route path="/contributors" element={<ContributorsPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

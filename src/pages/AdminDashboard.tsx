@@ -5,6 +5,7 @@ import {
   Calendar,
   ClipboardList,
   BarChart3,
+  Users as UsersIcon,
 } from "lucide-react";
 
 import TeacherManagement from "@/components/admin/TeacherManagement";
@@ -37,6 +38,11 @@ const navItems = [
     label: "Fairness Dashboard",
     href: "/fairness-dashboard",
     icon: <BarChart3 className="h-4 w-4" />,
+  },
+  {
+    label: "Contributors",
+    href: "/contributors",
+    icon: <UsersIcon className="h-4 w-4" />,
   },
 ];
 

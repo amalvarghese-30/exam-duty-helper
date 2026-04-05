@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { NavLink } from "react-router-dom";
-import { LogOut } from "lucide-react";
+import { LogOut, Users } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 interface NavItem {
@@ -66,9 +66,24 @@ export default function DashboardLayout({
             </div>
           </div>
 
+          {/* Contributors Link */}
+          <NavLink
+            to="/contributors"
+            className={({ isActive }) =>
+              `flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors mb-2 ${isActive
+                ? "bg-indigo-500 text-white"
+                : "text-slate-300 hover:bg-slate-800"
+              }`
+            }
+          >
+            <Users className="h-4 w-4" />
+            Contributors
+          </NavLink>
+
+          {/* Sign out button */}
           <button
             onClick={signOut}
-            className="flex items-center gap-2 text-sm text-red-400 hover:text-red-300"
+            className="flex items-center gap-2 text-sm text-red-400 hover:text-red-300 w-full"
           >
             <LogOut size={16} />
             Sign Out

@@ -19,16 +19,36 @@ router.get("/", async (req, res) => {
 
     const allocations = await DutyAllocation.find()
       .populate("teacher_id", "name department email")
-      .populate("exam_id", "subject exam_date start_time end_time room_number")
-      .sort({ allocated_at: -1 })
-      .lean();
+      .populate("exam_id", "subject class_name exam_date start_time end_time room_number");
 
-    const formatted = allocations.map(a => ({
+    // Format with class_name
+    let formatted = allocations.map(a => ({
       _id: a._id,
       status: a.status,
       teacher: a.teacher_id || null,
-      exam: a.exam_id || null
+      exam: a.exam_id || null,
+      class_name: a.exam_id ? (a.exam_id.class_name || "N/A") : "N/A"
     }));
+
+    // Triple-Sort: Class (FY->LY) -> Date -> Time
+    const classOrder = { "FY": 1, "SY": 2, "TY": 3, "LY": 4 };
+
+    formatted.sort((a, b) => {
+      // Priority 1: Class Name
+      const classA = classOrder[a.class_name] || 99;
+      const classB = classOrder[b.class_name] || 99;
+      if (classA !== classB) return classA - classB;
+
+      // Priority 2: Exam Date
+      const dateA = new Date(a.exam?.exam_date || 0);
+      const dateB = new Date(b.exam?.exam_date || 0);
+      if (dateA - dateB !== 0) return dateA - dateB;
+
+      // Priority 3: Start Time
+      const timeA = a.exam?.start_time || "";
+      const timeB = b.exam?.start_time || "";
+      return timeA.localeCompare(timeB);
+    });
 
     res.json(formatted);
 

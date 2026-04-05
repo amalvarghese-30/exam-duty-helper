@@ -14,6 +14,7 @@ const API = "http://localhost:3000/api";
 interface Exam {
   _id: string;
   subject: string;
+  class_name: string;
   exam_date: string;
   start_time: string;
   end_time: string;
@@ -26,7 +27,13 @@ export default function ExamScheduleManagement() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Exam | null>(null);
   const [form, setForm] = useState({
-    subject: '', exam_date: '', start_time: '', end_time: '', room_number: '', required_invigilators: 1
+    subject: '',
+    class_name: '',
+    exam_date: '',
+    start_time: '',
+    end_time: '',
+    room_number: '',
+    required_invigilators: 1
   });
   const [loading, setLoading] = useState(true);
 
@@ -45,7 +52,7 @@ export default function ExamScheduleManagement() {
   useEffect(() => { fetchExams(); }, []);
 
   const handleSave = async () => {
-    if (!form.subject || !form.exam_date || !form.start_time || !form.end_time) {
+    if (!form.subject || !form.class_name || !form.exam_date || !form.start_time || !form.end_time) {
       toast.error('Please fill all required fields');
       return;
     }
@@ -83,6 +90,7 @@ export default function ExamScheduleManagement() {
     setEditing(e);
     setForm({
       subject: e.subject,
+      class_name: e.class_name || '',
       exam_date: e.exam_date,
       start_time: e.start_time,
       end_time: e.end_time,
@@ -94,7 +102,15 @@ export default function ExamScheduleManagement() {
 
   const openNew = () => {
     setEditing(null);
-    setForm({ subject: '', exam_date: '', start_time: '', end_time: '', room_number: '', required_invigilators: 1 });
+    setForm({
+      subject: '',
+      class_name: '',
+      exam_date: '',
+      start_time: '',
+      end_time: '',
+      room_number: '',
+      required_invigilators: 1
+    });
     setDialogOpen(true);
   };
 
@@ -112,16 +128,17 @@ export default function ExamScheduleManagement() {
       headers.forEach((h, i) => { obj[h] = vals[i] || ''; });
       return {
         subject: obj['subject'] || obj['name'] || '',
+        class_name: obj['class'] || obj['class_name'] || 'FY',
         exam_date: obj['date'] || obj['exam_date'] || '',
         start_time: obj['start_time'] || obj['start'] || '09:00',
         end_time: obj['end_time'] || obj['end'] || '12:00',
         room_number: obj['room'] || obj['room_number'] || '',
         required_invigilators: parseInt(obj['invigilators'] || obj['required_invigilators'] || '1') || 1,
       };
-    }).filter(r => r.subject && r.exam_date);
+    }).filter(r => r.subject && r.class_name && r.exam_date);
 
     if (rows.length === 0) {
-      toast.error('No valid rows found. CSV needs: subject, date, start_time, end_time, room');
+      toast.error('No valid rows found. CSV needs: subject, class, date, start_time, end_time, room');
       return;
     }
 
@@ -170,6 +187,7 @@ export default function ExamScheduleManagement() {
           <TableHeader>
             <TableRow>
               <TableHead>Subject</TableHead>
+              <TableHead>Class</TableHead>
               <TableHead>Date</TableHead>
               <TableHead>Time</TableHead>
               <TableHead>Room</TableHead>
@@ -180,7 +198,7 @@ export default function ExamScheduleManagement() {
           <TableBody>
             {exams.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                   No exams scheduled. Add exams manually or import via CSV.
                 </TableCell>
               </TableRow>
@@ -188,6 +206,7 @@ export default function ExamScheduleManagement() {
               exams.map(e => (
                 <TableRow key={e._id}>
                   <TableCell className="font-medium">{e.subject}</TableCell>
+                  <TableCell>{e.class_name || '—'}</TableCell>
                   <TableCell>{new Date(e.exam_date).toLocaleDateString()}</TableCell>
                   <TableCell className="text-muted-foreground">{e.start_time.slice(0, 5)} – {e.end_time.slice(0, 5)}</TableCell>
                   <TableCell>{e.room_number}</TableCell>
@@ -219,6 +238,22 @@ export default function ExamScheduleManagement() {
               <Label>Subject</Label>
               <Input value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} placeholder="Mathematics 101" />
             </div>
+
+            <div className="space-y-2">
+              <Label>Class</Label>
+              <select
+                value={form.class_name}
+                onChange={e => setForm({ ...form, class_name: e.target.value })}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                <option value="">Select Class</option>
+                <option value="FY">First Year (FY)</option>
+                <option value="SY">Second Year (SY)</option>
+                <option value="TY">Third Year (TY)</option>
+                <option value="LY">Last Year (LY)</option>
+              </select>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Date</Label>
@@ -226,7 +261,7 @@ export default function ExamScheduleManagement() {
               </div>
               <div className="space-y-2">
                 <Label>Room</Label>
-                <Input value={form.room_number} placeholder="Auto-assigned" readOnly />
+                <Input value={form.room_number} onChange={e => setForm({ ...form, room_number: e.target.value })} placeholder="Room number" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
