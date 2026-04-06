@@ -17,9 +17,9 @@ export default function ProtectedRoute({ children, requiredRole }: ProtectedRout
     );
   }
 
-  if (!user) return <Navigate to="/" replace />;
+  if (!user) return <Navigate to="/auth" replace />;
   if (requiredRole && role !== requiredRole) {
-    return <Navigate to={role === 'admin' ? '/admin' : role === 'teacher' ? '/teacher' : '/'} replace />;
+    return <Navigate to={role === 'admin' ? '/admin' : role === 'teacher' ? '/teacher' : '/auth'} replace />;
   }
 
   return <>{children}</>;

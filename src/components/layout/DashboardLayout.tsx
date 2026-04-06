@@ -3,9 +3,9 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import ThemeToggle from '@/components/ThemeToggle';
 import {
-  GraduationCap, LayoutDashboard, Users, Calendar, ClipboardList,
-  Bell, LogOut, Menu, X, ChevronRight, Settings
+  GraduationCap, Users, Bell, LogOut, Menu, X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -33,7 +33,7 @@ export default function DashboardLayout({ children, navItems, title }: Dashboard
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-white to-teal-50/40 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 bg-foreground/20 backdrop-blur-sm lg:hidden" onClick={() => setSidebarOpen(false)} />
@@ -41,7 +41,7 @@ export default function DashboardLayout({ children, navItems, title }: Dashboard
 
       {/* Sidebar */}
       <aside className={cn(
-        "fixed inset-y-0 left-0 z-50 w-64 flex flex-col bg-sidebar text-sidebar-foreground transition-transform duration-300 lg:static lg:translate-x-0",
+        "fixed inset-y-0 left-0 z-50 w-64 flex flex-col border-r border-sidebar-border/70 bg-sidebar text-sidebar-foreground shadow-2xl shadow-slate-900/20 transition-transform duration-300 lg:static lg:translate-x-0",
         sidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-5">
@@ -112,17 +112,23 @@ export default function DashboardLayout({ children, navItems, title }: Dashboard
 
       {/* Main content */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex h-16 items-center gap-4 border-b border-border bg-card px-4 lg:px-6">
+        <header className="flex h-16 items-center gap-4 border-b border-border/70 bg-white/80 px-4 backdrop-blur dark:bg-slate-950/80 lg:px-6">
           <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(true)}>
             <Menu className="h-5 w-5" />
           </Button>
           <h1 className="text-lg font-semibold text-foreground">{title}</h1>
+          <Badge variant="outline" className="hidden border-emerald-200 bg-emerald-50 text-emerald-700 md:inline-flex">
+            Live Operations
+          </Badge>
           <div className="ml-auto flex items-center gap-2">
+            <ThemeToggle className="border-border bg-background" />
             <NotificationBell />
           </div>
         </header>
         <main className="flex-1 overflow-y-auto p-4 lg:p-6">
-          {children}
+          <div className="rounded-2xl border border-border/70 bg-card/85 p-4 shadow-xl shadow-slate-900/5 lg:p-6 dark:shadow-slate-950/40">
+            {children}
+          </div>
         </main>
       </div>
     </div>

@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dialog";
 
 import { Badge } from "@/components/ui/badge";
+import ModuleHero from "@/components/ModuleHero";
 import { toast } from "sonner";
 
 import { Plus, Pencil, Trash2, Search } from "lucide-react";
@@ -158,6 +159,11 @@ export default function TeacherManagement() {
 
   return (
     <div className="space-y-4 animate-fade-in">
+      <ModuleHero
+        eyebrow="Teacher Records Management"
+        title="Faculty Master Data"
+        description="Maintain teacher identity, department, and subject metadata to power accurate and fair automated duty allocation."
+      />
 
       {/* HEADER */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">

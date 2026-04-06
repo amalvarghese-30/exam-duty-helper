@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import ModuleHero from '@/components/ModuleHero';
 import { Users, Calendar, ClipboardList, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -61,6 +62,12 @@ export default function AdminOverview() {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      <ModuleHero
+        eyebrow="Admin Control Center"
+        title="Unified Exam Duty Operations"
+        description="Manage faculty records, exam schedules, allocation quality, and AI automation policies from a single workspace."
+      />
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {cards.map(c => (
           <Card key={c.title} className="shadow-card">

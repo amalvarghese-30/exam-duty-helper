@@ -15,7 +15,7 @@ import { Wand2, RefreshCw, Calendar as CalendarIcon, Info, Sparkles, Download } 
 
 const API = "http://localhost:5000";
 
-// Standard rules to display to the admin
+// Fallback rules when policy is not yet available.
 const BASE_RULES = `1. Teachers should not invigilate their own subject.
 2. Teachers on leave should not be assigned.
 3. Distribute duties so each teacher gets approximately equal total duties.
@@ -33,6 +33,7 @@ interface Allocation {
 
 export default function DutyAllocation() {
   const [allocations, setAllocations] = useState<Allocation[]>([]);
+  const [baseRules, setBaseRules] = useState(BASE_RULES);
   const [loading, setLoading] = useState(false);
   const [view, setView] = useState<'table' | 'calendar'>('table');
   
@@ -53,13 +54,30 @@ export default function DutyAllocation() {
     }
   };
 
-  useEffect(() => { fetchAllocations(); }, []);
+  const fetchPolicyRules = async () => {
+    try {
+      const res = await axios.get(`${API}/auto-allocate/policy`);
+      const rulesText = typeof res.data?.rulesText === 'string' ? res.data.rulesText.trim() : '';
+      setBaseRules(rulesText || BASE_RULES);
+    } catch (error) {
+      console.error('Failed to fetch policy rules:', error);
+      setBaseRules(BASE_RULES);
+    }
+  };
+
+  useEffect(() => {
+    fetchAllocations();
+    fetchPolicyRules();
+  }, []);
 
   const runAllocation = async () => {
     setLoading(true);
     try {
-      // Create the full instruction string
-      const finalRules = `${BASE_RULES}\n\nAdditional Instructions: ${additionalRules}`;
+      // Send a clean rule string so parser behavior stays deterministic.
+      const trimmedAdditionalRules = additionalRules.trim();
+      const finalRules = trimmedAdditionalRules
+        ? `${baseRules}\n\nAdditional Instructions:\n${trimmedAdditionalRules}`
+        : baseRules;
 
       // Call the API and pass the rules
       const response = await axios.post(`${API}/auto-allocate/`, { 
@@ -70,6 +88,7 @@ export default function DutyAllocation() {
 
       toast.success(response.data.message || 'Allocation successful!');
       fetchAllocations();
+      fetchPolicyRules();
       setAdditionalRules(""); // Clear the text box after it's done
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Allocation failed');
@@ -154,6 +173,7 @@ export default function DutyAllocation() {
     if (s === 'assigned') return 'bg-primary/10 text-primary border-primary/20';
     if (s === 'accepted') return 'bg-success/10 text-success border-success/20';
     if (s === 'on_leave') return 'bg-warning/10 text-warning border-warning/20';
+    if (s === 'unassigned') return 'bg-red-100 text-red-700 border-red-300 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800';
     return 'bg-muted text-muted-foreground';
   };
 
@@ -168,7 +188,7 @@ export default function DutyAllocation() {
     <div className="space-y-6 animate-fade-in">
       
       {/* NEW: AI Rule Configuration Section */}
-      <Card className="shadow-sm border-primary/10 bg-primary/5">
+      <Card className="shadow-sm border-primary/20 bg-primary/5 dark:border-primary/30 dark:bg-slate-900/80">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <Info className="h-4 w-4 text-primary" />
@@ -176,10 +196,10 @@ export default function DutyAllocation() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="text-xs text-muted-foreground bg-white/50 p-3 rounded border border-primary/10">
-            <p className="font-semibold mb-1 text-primary">Standard Rules (Always Active):</p>
+          <div className="text-xs text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800/80 p-3 rounded border border-primary/20 dark:border-primary/30">
+            <p className="font-semibold mb-1 text-primary dark:text-blue-300">Standard Rules (Always Active):</p>
             <pre className="whitespace-pre-wrap font-sans leading-relaxed">
-              {BASE_RULES}
+              {baseRules}
             </pre>
           </div>
           
@@ -192,7 +212,7 @@ export default function DutyAllocation() {
               placeholder="e.g., Exclude Dr. Kunal Sharma from invigilation"
               value={additionalRules}
               onChange={(e) => setAdditionalRules(e.target.value)}
-              className="bg-white resize-none"
+              className="bg-white text-slate-900 placeholder:text-slate-500 resize-none dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-400"
               rows={3}
             />
           </div>
@@ -201,17 +221,17 @@ export default function DutyAllocation() {
 
       {/* 2. ENHANCED AI REASONING CARD */}
       {aiExplanation && (
-        <Card className="border-blue-200 bg-blue-50/30 shadow-sm transition-all duration-300">
+        <Card className="border-blue-200 bg-blue-50/40 shadow-sm transition-all duration-300 dark:border-blue-700/60 dark:bg-slate-900/85">
           <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-xs font-bold text-blue-800 flex items-center gap-2">
-              <Sparkles className="h-3 w-3 text-blue-500" />
+            <CardTitle className="text-xs font-bold text-blue-800 dark:text-blue-300 flex items-center gap-2">
+              <Sparkles className="h-3 w-3 text-blue-500 dark:text-blue-300" />
               AI ALLOCATION LOGIC
             </CardTitle>
             <Button 
               variant="ghost" 
               size="sm" 
               onClick={() => setShowFullAiLogic(!showFullAiLogic)}
-              className="h-8 text-blue-600 hover:bg-blue-100 hover:text-blue-700 text-xs font-semibold"
+              className="h-8 text-blue-600 hover:bg-blue-100 hover:text-blue-700 text-xs font-semibold dark:text-blue-300 dark:hover:bg-slate-800 dark:hover:text-blue-200"
             >
               {showFullAiLogic ? "Hide Details" : "Show Reasoning"}
             </Button>
@@ -219,14 +239,14 @@ export default function DutyAllocation() {
           
           <CardContent>
             {/* Short Summary (Always Visible) */}
-            <p className="text-sm text-blue-700 leading-relaxed font-medium">
+            <p className="text-sm text-blue-700 dark:text-blue-200 leading-relaxed font-medium">
               The AI has successfully balanced duties across available staff while preventing subject and schedule conflicts.
             </p>
 
             {/* Expandable Detailed Reasoning */}
             {showFullAiLogic && (
-              <div className="mt-4 pt-4 border-t border-blue-100 animate-in fade-in slide-in-from-top-2 duration-300">
-                <div className="prose prose-sm max-w-none text-blue-800/80">
+              <div className="mt-4 pt-4 border-t border-blue-100 dark:border-blue-800/50 animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="prose prose-sm max-w-none text-blue-800/80 dark:text-blue-100">
                   {/* Split by newlines or use ReactMarkdown if you have it installed */}
                   {aiExplanation.split('\n').map((line, i) => (
                     <p key={i} className="mb-2 last:mb-0">
@@ -279,14 +299,14 @@ export default function DutyAllocation() {
             <TableBody>
               {allocations.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                     No allocations yet. Configure rules and click "Run AI Auto-Allocate".
                   </TableCell>
                 </TableRow>
               ) : (
                 allocations.map(a => (
                   <TableRow key={a._id}>
-                    <TableCell className="font-medium">{a.teacher?.name || '—'}</TableCell>
+                    <TableCell className="font-medium">{a.teacher?.name || 'Unassigned'}</TableCell>
                     <TableCell>{a.exam?.subject || '—'}</TableCell>
                     <TableCell className="font-bold text-blue-600">
                       {a.exam?.class_name || "N/A"}

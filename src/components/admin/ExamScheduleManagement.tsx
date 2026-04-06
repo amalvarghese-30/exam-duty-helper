@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import ModuleHero from '@/components/ModuleHero';
 import { toast } from 'sonner';
 import { Plus, Pencil, Trash2, Upload } from 'lucide-react';
 
@@ -155,6 +156,12 @@ export default function ExamScheduleManagement() {
 
   return (
     <div className="space-y-4 animate-fade-in">
+      <ModuleHero
+        eyebrow="Exam Schedule Management"
+        title="Central Exam Timetable"
+        description="Create and import exam schedules with automatic room assignment, then trigger AI-powered allocations from standardized timetable data."
+      />
+
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="flex gap-2">
           <Button onClick={openNew}>

@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Users, Code2, Brain, Layout, Database, Shield, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import ThemeToggle from '@/components/ThemeToggle';
 
 const teamContributions = [
     {
@@ -93,6 +94,9 @@ export default function ContributorsPage() {
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
             <div className="max-w-6xl mx-auto px-4 py-8">
+                <div className="mb-4 flex justify-end">
+                    <ThemeToggle className="border-border bg-card" />
+                </div>
                 {/* Back Button */}
                 <Button
                     variant="ghost"
@@ -141,8 +145,8 @@ export default function ContributorsPage() {
                                 allowFullScreen
                             />
                         </div>
-                        <p className="text-center text-sm text-muted-foreground mt-4">
-                            🎥 Replace <code className="bg-muted px-1 rounded">REPLACE_WITH_YOUR_VIDEO_ID</code> with your actual YouTube video ID
+                            <p className="text-center text-sm text-muted-foreground mt-4">
+                            Replace <code className="bg-muted px-1 rounded">REPLACE_WITH_YOUR_VIDEO_ID</code> with your actual YouTube video ID
                         </p>
                     </CardContent>
                 </Card>

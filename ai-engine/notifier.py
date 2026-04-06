@@ -9,9 +9,23 @@ load_dotenv()
 
 # Setup Gemini Client
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+_gemini_mail_available = True
+
+
+def _is_quota_or_auth_error(error):
+    message = str(error).lower()
+    return (
+        "resource_exhausted" in message
+        or "quota" in message
+        or "429" in message
+        or "invalid api key" in message
+        or "permission denied" in message
+    )
 
 def send_single_mail(teacher_name, teacher_email, duty):
     """Drafts with Gemini and sends via SMTP"""
+    global _gemini_mail_available
+
     prompt = f"""
     Write a brief, professional reminder email to {teacher_name} for their exam duty.
     Subject: {duty['exam_name']}
@@ -28,6 +42,9 @@ def send_single_mail(teacher_name, teacher_email, duty):
     """
     
     try:
+        if not _gemini_mail_available or not os.getenv("GEMINI_API_KEY"):
+            return send_template_mail(teacher_name, teacher_email, duty)
+
         # Note: Corrected to gemini-2.5-flash (most stable for 2026)
         response = client.models.generate_content(
             model="gemini-2.5-flash", 
@@ -46,10 +63,18 @@ def send_single_mail(teacher_name, teacher_email, duty):
             smtp.send_message(msg)
         return True
     except Exception as e:
+        if _is_quota_or_auth_error(e):
+            _gemini_mail_available = False
+            print("ℹ️ Gemini mail draft disabled for this run (quota/auth). Using template mode.")
+            return send_template_mail(teacher_name, teacher_email, duty)
         print(f"❌ Error sending to {teacher_name}: {e}")
         return False
 
 def notify_assigned_teachers(roster, all_teachers, all_exams):
+    if not os.getenv("EMAIL_USER") or not os.getenv("EMAIL_PASS"):
+        print("ℹ️ Email credentials missing. Skipping notifications.")
+        return 0
+
     success_count = 0
     teacher_map = {t['email']: t for t in all_teachers}
     exam_map = {f"{e['subject']}_{e['exam_date']}": e for e in all_exams}
@@ -76,14 +101,14 @@ def notify_assigned_teachers(roster, all_teachers, all_exams):
         }
 
         # 🤖 2. HYBRID LOGIC: Only use AI for the first 2 emails
-        use_ai = (index < 2)
+        use_ai = (index < 2) and _gemini_mail_available and bool(os.getenv("GEMINI_API_KEY"))
 
         if use_ai:
             print(f"✨ [AI DRAFT] Processing email for {teacher_name}...")
             # We use our existing send_single_mail function
             success = send_single_mail(teacher_name, teacher_email, duty_info)
-            # Short sleep to stay safe during the AI portion
-            time.sleep(6)
+            # Sleep only when still in AI mode after send.
+            time.sleep(6 if _gemini_mail_available else 0.5)
         else:
             print(f"⚡ [TEMPLATE] Fast-sending email to {teacher_name}...")
             # Direct SMTP send without calling Gemini

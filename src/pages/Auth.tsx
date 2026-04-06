@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { GraduationCap } from 'lucide-react';
+import ThemeToggle from '@/components/ThemeToggle';
 
 const API = "http://localhost:5000";
 
@@ -46,7 +47,10 @@ export default function Auth() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+    <div className="relative flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-100 via-white to-teal-100/50 p-4 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900">
+      <div className="absolute right-4 top-4">
+        <ThemeToggle className="border-border bg-card" />
+      </div>
       <div className="w-full max-w-md animate-fade-in">
         <div className="mb-8 text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl gradient-primary">
@@ -60,7 +64,7 @@ export default function Auth() {
           </p>
         </div>
 
-        <Card className="shadow-lg border-border/60">
+        <Card className="border-border/60 bg-card/95 shadow-lg backdrop-blur">
           <Tabs defaultValue="login" className="w-full">
             <TabsList className="grid w-full grid-cols-2 m-0 rounded-b-none">
               <TabsTrigger value="login">Sign In</TabsTrigger>

@@ -12,26 +12,36 @@ def home():
 
 @app.route("/generate", methods=["POST"])
 def generate():
-    data = request.json
-    
-    # 🧠 Step 1: Gemini parses the rules string into a JSON config
-    constraints = parse_rules(data["rules"])
+    try:
+        data = request.json or {}
+        teachers = data.get("teachers", [])
+        exams = data.get("exams", [])
+        rules = data.get("rules", "")
 
-    # ⚙️ Step 2: The logic engine uses that JSON to build the roster
-    roster = generate_schedule(data["teachers"], data["exams"], constraints)
+        if not isinstance(teachers, list) or not isinstance(exams, list):
+            return jsonify({"error": "Invalid payload: teachers/exams must be arrays"}), 400
 
-    # 🤖 Step 3: Gemini explains the result
-    explanation = explain_schedule(roster)
+        # Step 1: Parse rules into scheduler constraints.
+        constraints = parse_rules(rules)
 
-    # 4. Notify (Clean 1-line call!)
-    emails_sent = notify_assigned_teachers(roster, data["teachers"], data["exams"])
+        # Step 2: Build roster.
+        roster = generate_schedule(teachers, exams, constraints)
 
-    return jsonify({
-        "interpreted_constraints": constraints, # Show this in UI to prove AI worked
-        "roster": roster,
-        "explanation": explanation,
-        "emails_sent": emails_sent
-    })
+        # Step 3: Explain schedule (with fallback handled in explain module).
+        explanation = explain_schedule(roster)
+
+        # Step 4: Notify teachers (safe fallback if email config is missing).
+        emails_sent = notify_assigned_teachers(roster, teachers, exams)
+
+        return jsonify({
+            "interpreted_constraints": constraints,
+            "roster": roster,
+            "explanation": explanation,
+            "emails_sent": emails_sent
+        })
+    except Exception as e:
+        return jsonify({"error": f"AI engine failed: {str(e)}"}), 500
 
 if __name__ == "__main__":
-    app.run(port=5001, debug=True)
+    # Disable auto-reloader to avoid connection resets during long requests.
+    app.run(host="127.0.0.1", port=5001, debug=False, use_reloader=False)
