@@ -157,6 +157,10 @@ export default function DutyAllocation() {
     return 'bg-muted text-muted-foreground';
   };
 
+  const handleRuleInput = (text: string) => {
+    console.log("Admin entered scheduling rule:", text);
+  };
+
   const calendarData = allocations.reduce<Record<string, Allocation[]>>((acc, a) => {
     const date = a.exam?.exam_date || '';
     if (!acc[date]) acc[date] = [];
