@@ -76,6 +76,17 @@ router.delete("/:id", async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+router.get("/:id/duties", async (req, res) => {
+try {
+const DutyAllocation = require("../models/DutyAllocation");
+const duties = await DutyAllocation.find({
+teacher_id: req.params.id
+}).populate("exam_id");
+res.json(duties);
+} catch (err) {
+res.status(500).json({ error: err.message });
+}
+});
 
 
 module.exports = router;
