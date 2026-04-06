@@ -37,6 +37,8 @@ export default function AdminOverview() {
     fetchStats();
   }, []);
 
+  //const cards
+
   const cards = [
     { title: 'Total Teachers', value: stats.teachers, icon: <Users className="h-5 w-5" />, color: 'text-primary' },
     { title: 'Exam Schedules', value: stats.exams, icon: <Calendar className="h-5 w-5" />, color: 'text-success' },
