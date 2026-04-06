@@ -54,8 +54,6 @@ Dataset includes:
 - Teacher information
 - Exam schedules
 - Leave records
-- Allocation constraints
-- Department policies
 
 Additional file:
 
@@ -63,26 +61,39 @@ rooms.csv — contains room numbers available for exam duty allocation
 
 ## ⚙️ Installation
 Step 1: Clone Repository
+
 git clone https://github.com/amalvarghese-30/exam-duty-helper.git
+
 cd exam-duty-helper
+
 Step 2: Install Frontend Dependencies
+
 npm install
+
 npm run dev
 
 Frontend runs at:
 
 http://localhost:8080
+
 Step 3: Start Backend Server
+
 cd backend
+
 npm install
+
 node server.js
 
 Backend runs at:
 
 http://localhost:3000
+
 Step 4: Start AI Engine
+
 cd ai-engine
+
 pip install -r requirements.txt
+
 python api.py
 
 AI Engine runs at:
