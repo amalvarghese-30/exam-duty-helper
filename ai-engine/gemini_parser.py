@@ -27,7 +27,8 @@ def parse_rules(rule_text):
         model="gemini-2.5-flash",
         contents=prompt
     )
-    
+    if "max_duties_per_day" not in data:
+        data["max_duties_per_day"] = 1
     text = response.text.strip().replace("```json", "").replace("```", "")
     try:
         data = json.loads(text)
