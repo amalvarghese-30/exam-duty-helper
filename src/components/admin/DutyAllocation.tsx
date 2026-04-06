@@ -87,7 +87,9 @@ export default function DutyAllocation() {
       toast.error(err.response?.data?.error || 'Failed to clear allocations');
     }
   };
-
+  const previewSimulation = () => {
+console.log("Previewing allocation simulation...");
+}; 
   const downloadPDF = () => {
     const doc = new jsPDF();
     const classes = ["FY", "SY", "TY", "LY"];
