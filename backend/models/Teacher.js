@@ -37,3 +37,9 @@ const teacherSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 module.exports = mongoose.model("Teacher", teacherSchema);
+
+teacherSchema.methods.getWorkloadCategory = function () {
+if (this.totalDuties === 0) return "LOW";
+if (this.totalDuties <= 2) return "MEDIUM";
+return "HIGH";
+};
