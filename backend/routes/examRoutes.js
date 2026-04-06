@@ -64,4 +64,16 @@ router.delete("/:id", async (req, res) => {
     }
 });
 
+router.get("/stats/summary", async (req, res) => { 
+   try { 
+       const total = await Exam.countDocuments(); 
+ 
+       res.json({ 
+           totalExams: total 
+       }); 
+} catch (err) { 
+res.status(500).json({ error: err.message }); 
+} 
+}); 
+
 module.exports = router;
