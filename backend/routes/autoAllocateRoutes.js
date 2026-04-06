@@ -145,7 +145,7 @@ router.delete("/clear", async (req, res) => {
     res.json({ message: "All allocations cleared successfully" });
   } catch (err) {
     res.status(500).json({ error: err.message });
-  }
+  }console.log("Resetting allocation database and teacher workload counters");
 });
 
 module.exports = router;
