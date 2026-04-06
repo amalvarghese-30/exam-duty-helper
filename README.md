@@ -51,11 +51,11 @@ The system uses a custom-generated academic scheduling dataset modeled after exa
 
 Dataset includes:
 
-Teacher information
-Exam schedules
-Leave records
-Allocation constraints
-Department policies
+- Teacher information
+- Exam schedules
+- Leave records
+- Allocation constraints
+- Department policies
 
 Additional file:
 
@@ -130,27 +130,27 @@ YouTube link here
 - Athira Saji
 - Amal Varghese
 - Priya Amrolkar
--Aadinath Vijeesh
--Shreyash Bansod
--Ahbin Saibu
--Abhiram Sethu
--Aswin Kumar
--Purva Badekar
--Vyas Angre
-Christopher Varghese
+- Aadinath Vijeesh
+- Shreyash Bansod
+- Ahbin Saibu
+- Abhiram Sethu
+- Aswin Kumar
+- Purva Badekar
+- Vyas Angre
+- Christopher Varghese
  
 ## 📌 GitHub Contributions
-Athira – AI Scheduler Engine (constraint-based allocation pipeline, fairness balancing logic, subject-conflict avoidance rules, workload equalization strategy)
-Amal – Distributed System Integration (Flask AI engine APIs, MongoDB backend connectivity, leave-aware scheduling bridge, room auto-allocation logic, email notification pipeline)
-Abhiram – Teacher Dashboard APIs (teacher lookup by email, duty retrieval endpoints, availability synchronization with allocation engine)
-Vyas – Admin Dashboard Metrics (exam statistics APIs, allocation analytics endpoints, workload visualization support)
-Christopher – Gemini NLP Rule Parser Integration (natural-language policy conversion into structured scheduling constraints)
-Abhin – Duty Allocation Persistence Layer (MongoDB allocation storage, reset pipeline, roster synchronization logic)
-Purva – Fairness Analytics Module (teacher workload tracking, duty balancing metrics, allocation validation summaries)
-Priya – Simulation Risk Prediction Interface (allocation preview workflow and visualization components)
-Aswin – Conversational Rule Editor UI (admin natural-language scheduling rule input interface)
-Shreyash – Explainable AI Assistant Integration (teacher-facing explanation chatbot for allocation reasoning)
-Aadinath – Allocation Visualization Dashboard (roster rendering components and simulation output panels)
+- Athira – AI Scheduler Engine (constraint-based allocation pipeline, fairness balancing logic, subject-conflict avoidance rules, workload equalization strategy)
+- Amal – Distributed System Integration (Flask AI engine APIs, MongoDB backend connectivity, leave-aware scheduling bridge, room auto-allocation logic, email notification pipeline)
+- Abhiram – Teacher Dashboard APIs (teacher lookup by email, duty retrieval endpoints, availability synchronization with allocation engine)
+- Vyas – Admin Dashboard Metrics (exam statistics APIs, allocation analytics endpoints, workload visualization support)
+- Christopher – Gemini NLP Rule Parser Integration (natural-language policy conversion into structured scheduling constraints)
+- Abhin – Duty Allocation Persistence Layer (MongoDB allocation storage, reset pipeline, roster synchronization logic)
+- Purva – Fairness Analytics Module (teacher workload tracking, duty balancing metrics, allocation validation summaries)
+- Priya – Simulation Risk Prediction Interface (allocation preview workflow and visualization components)
+- Aswin – Conversational Rule Editor UI (admin natural-language scheduling rule input interface)
+- Shreyash – Explainable AI Assistant Integration (teacher-facing explanation chatbot for allocation reasoning)
+- Aadinath – Allocation Visualization Dashboard (roster rendering components and simulation output panels)
 
 References
   AI & NLP
