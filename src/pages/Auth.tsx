@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import { GraduationCap } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 
-const API = "http://localhost:5000";
+const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 export default function Auth() {
   const { user, role, loading } = useAuth();

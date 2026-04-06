@@ -13,7 +13,7 @@ import autoTable from 'jspdf-autotable';
 // CHECK THIS LINE AT THE TOP
 import { Wand2, RefreshCw, Calendar as CalendarIcon, Info, Sparkles, Download } from 'lucide-react';
 
-const API = "http://localhost:5000";
+const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 // Fallback rules when policy is not yet available.
 const BASE_RULES = `1. Teachers should not invigilate their own subject.
@@ -27,8 +27,26 @@ interface Allocation {
   exam_id: string;
   status: string;
   class_name: string;
+  room_number?: string;
+  start_roll?: number;
+  end_roll?: number;
+  assigned_count?: number;
   teacher?: { name: string; department: string };
-  exam?: { subject: string; class_name: string; exam_date: string; start_time: string; end_time: string; room_number: string };
+  exam?: {
+    subject: string;
+    class_name: string;
+    exam_date: string;
+    start_time: string;
+    end_time: string;
+    room_number: string;
+    student_count?: number;
+    required_invigilators?: number;
+    seating_plan?: Array<{
+      room_number: string;
+      start_roll: number;
+      end_roll: number;
+    }>;
+  };
 }
 
 export default function DutyAllocation() {
@@ -154,7 +172,7 @@ export default function DutyAllocation() {
             a.exam?.subject || '—',
             a.exam?.exam_date ? new Date(a.exam.exam_date).toLocaleDateString() : '—',
             `${a.exam?.start_time?.slice(0, 5)} - ${a.exam?.end_time?.slice(0, 5)}`,
-            a.exam?.room_number || '—'
+            a.room_number || a.exam?.room_number || '—'
           ]),
           theme: 'grid',
           headStyles: { fillColor: [31, 41, 55] },
@@ -175,6 +193,26 @@ export default function DutyAllocation() {
     if (s === 'on_leave') return 'bg-warning/10 text-warning border-warning/20';
     if (s === 'unassigned') return 'bg-red-100 text-red-700 border-red-300 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800';
     return 'bg-muted text-muted-foreground';
+  };
+
+  const seatingSummary = (allocation: Allocation) => {
+    const className = allocation.exam?.class_name || allocation.class_name || 'Class';
+    if (allocation.room_number && allocation.start_roll && allocation.end_roll) {
+      return `${className} ${allocation.start_roll}-${allocation.end_roll}: ${allocation.room_number}`;
+    }
+
+    const plan = allocation.exam?.seating_plan || [];
+    if (!plan.length) {
+      const room = String(allocation.exam?.room_number || '').trim();
+      const students = Number(allocation.exam?.student_count || 0);
+      if (room && students > 0) {
+        return `${className} 1-${students}: ${room}`;
+      }
+      return '—';
+    }
+    return plan
+      .map((slot) => `${className} ${slot.start_roll}-${slot.end_roll}: ${slot.room_number}`)
+      .join(', ');
   };
 
   const calendarData = allocations.reduce<Record<string, Allocation[]>>((acc, a) => {
@@ -293,13 +331,14 @@ export default function DutyAllocation() {
                 <TableHead>Date</TableHead>
                 <TableHead>Time</TableHead>
                 <TableHead>Room</TableHead>
+                <TableHead>Roll Split</TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {allocations.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                     No allocations yet. Configure rules and click "Run AI Auto-Allocate".
                   </TableCell>
                 </TableRow>
@@ -315,7 +354,8 @@ export default function DutyAllocation() {
                     <TableCell className="text-muted-foreground">
                       {a.exam?.start_time?.slice(0, 5)} – {a.exam?.end_time?.slice(0, 5)}
                     </TableCell>
-                    <TableCell>{a.exam?.room_number}</TableCell>
+                    <TableCell>{a.room_number || a.exam?.room_number || '—'}</TableCell>
+                    <TableCell className="max-w-xs text-xs text-muted-foreground">{seatingSummary(a)}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className={statusColor(a.status)}>{a.status}</Badge>
                     </TableCell>
@@ -340,7 +380,7 @@ export default function DutyAllocation() {
                   <div key={a._id} className="flex items-center justify-between rounded-lg bg-muted/50 p-2 text-sm">
                     <div>
                       <p className="font-medium text-foreground">{a.exam?.subject}</p>
-                      <p className="text-xs text-muted-foreground">{a.teacher?.name} • {a.exam?.room_number}</p>
+                      <p className="text-xs text-muted-foreground">{a.teacher?.name} • {a.room_number || a.exam?.room_number || '—'}</p>
                     </div>
                     <span className="text-xs text-muted-foreground">
                       {a.exam?.start_time?.slice(0, 5)}

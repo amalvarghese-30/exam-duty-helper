@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+import os
 from gemini_parser import parse_rules
 from scheduler import generate_schedule
 from explain import explain_schedule
@@ -44,4 +45,6 @@ def generate():
 
 if __name__ == "__main__":
     # Disable auto-reloader to avoid connection resets during long requests.
-    app.run(host="127.0.0.1", port=5001, debug=False, use_reloader=False)
+    host = os.getenv("AI_HOST", "0.0.0.0")
+    port = int(os.getenv("PORT", os.getenv("AI_PORT", "5001")))
+    app.run(host=host, port=port, debug=False, use_reloader=False)

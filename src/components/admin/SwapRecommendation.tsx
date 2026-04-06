@@ -7,7 +7,7 @@ import ModuleHero from '@/components/ModuleHero';
 import { toast } from 'sonner';
 import { RefreshCw, Shuffle, Sparkles } from 'lucide-react';
 
-const API = 'http://localhost:5000';
+const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 interface SwapRecommendationRow {
   teacherA: {

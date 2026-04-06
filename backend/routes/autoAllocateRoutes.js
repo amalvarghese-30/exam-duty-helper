@@ -6,6 +6,8 @@ const DutyAllocation = require("../models/DutyAllocation");
 const TeacherLeave = require("../models/TeacherLeave");
 const AllocationPolicy = require("../models/AllocationPolicy");
 const axios = require("axios");
+const fs = require("fs");
+const path = require("path");
 
 const DEFAULT_RULES = `
 1. Teachers should not invigilate their own subject.
@@ -16,6 +18,133 @@ const DEFAULT_RULES = `
 
 const AI_ENGINE_URL = process.env.AI_ENGINE_URL || "http://127.0.0.1:5001";
 
+function loadCapacityMap(filePath, keyName, valueName) {
+  try {
+    const rows = fs.readFileSync(filePath, "utf-8")
+      .split("\n")
+      .map((row) => row.trim())
+      .filter(Boolean);
+
+    if (!rows.length) return new Map();
+
+    const header = rows[0].split(",").map((part) => part.trim().toLowerCase());
+    const keyIndex = header.indexOf(keyName.toLowerCase());
+    const valueIndex = header.indexOf(valueName.toLowerCase());
+
+    if (keyIndex < 0 || valueIndex < 0) return new Map();
+
+    const map = new Map();
+    rows.slice(1).forEach((row) => {
+      const cols = row.split(",").map((part) => part.trim());
+      const key = cols[keyIndex];
+      const value = Number(cols[valueIndex]);
+      if (!key || !Number.isFinite(value)) return;
+      map.set(key.toLowerCase(), value);
+    });
+
+    return map;
+  } catch {
+    return new Map();
+  }
+}
+
+function enrichExamsWithCapacities(exams) {
+  const roomCapacityMap = loadCapacityMap(
+    path.join(__dirname, "../data/rooms.csv"),
+    "room",
+    "capacity"
+  );
+  const classCapacityMap = loadCapacityMap(
+    path.join(__dirname, "../data/class_capacity.csv"),
+    "class_name",
+    "student_count"
+  );
+
+  return exams.map((exam) => {
+    const classCapacity = classCapacityMap.get(String(exam.class_name || "").toLowerCase());
+    const resolvedClassCapacity = Number(exam.student_count) || classCapacity || 0;
+    const seatingCapacity = Array.isArray(exam.seating_plan)
+      ? exam.seating_plan.reduce((sum, slot) => sum + (Number(slot?.room_capacity) || 0), 0)
+      : 0;
+    const roomCapacity = seatingCapacity || roomCapacityMap.get(String(exam.room_number || "").toLowerCase()) || 0;
+
+    return {
+      ...exam,
+      class_capacity: resolvedClassCapacity,
+      room_capacity: roomCapacity,
+    };
+  });
+}
+
+function rebalanceRoomsForCapacity(exams) {
+  const roomCapacityMap = loadCapacityMap(
+    path.join(__dirname, "../data/rooms.csv"),
+    "room",
+    "capacity"
+  );
+
+  const roomPool = [...roomCapacityMap.entries()]
+    .map(([room, capacity]) => ({ room: room.toUpperCase(), capacity: Number(capacity) || 0 }))
+    .sort((a, b) => a.capacity - b.capacity);
+
+  const slotMap = new Map();
+  exams.forEach((exam) => {
+    const key = `${exam.exam_date}__${exam.start_time}`;
+    if (!slotMap.has(key)) slotMap.set(key, []);
+    slotMap.get(key).push({
+      ...exam,
+      original_room_number: exam.room_number || "",
+      class_capacity: Number(exam.class_capacity || exam.student_count || 0),
+    });
+  });
+
+  const adjusted = [];
+
+  slotMap.forEach((slotExams) => {
+    const availableRooms = roomPool.map((room) => ({ ...room }));
+
+    const examsByDemand = [...slotExams].sort((a, b) => b.class_capacity - a.class_capacity);
+
+    examsByDemand.forEach((exam) => {
+      const needed = Number(exam.class_capacity) || 0;
+      const existingRoom = String(exam.room_number || "").toUpperCase();
+
+      let roomIndex = availableRooms.findIndex(
+        (room) =>
+          room.room === existingRoom &&
+          (needed <= 0 || room.capacity <= 0 || room.capacity >= needed)
+      );
+
+      if (roomIndex < 0) {
+        roomIndex = availableRooms.findIndex(
+          (room) => needed <= 0 || room.capacity <= 0 || room.capacity >= needed
+        );
+      }
+
+      if (roomIndex < 0 && availableRooms.length > 0) {
+        roomIndex = availableRooms.length - 1;
+      }
+
+      if (roomIndex >= 0) {
+        const assignedRoom = availableRooms.splice(roomIndex, 1)[0];
+        exam.room_number = assignedRoom.room;
+        exam.room_capacity = assignedRoom.capacity;
+      }
+
+      exam.capacity_conflict = Boolean(
+        needed > 0 && exam.room_capacity > 0 && exam.room_capacity < needed
+      );
+      exam.room_reassigned =
+        Boolean(exam.room_number) &&
+        String(exam.room_number).toUpperCase() !== String(exam.original_room_number || "").toUpperCase();
+
+      adjusted.push(exam);
+    });
+  });
+
+  return adjusted;
+}
+
 function formatDate(dateString) {
   if (!dateString) return "Unknown";
   const date = new Date(dateString);
@@ -25,6 +154,35 @@ function formatDate(dateString) {
     month: "short",
     year: "numeric",
   });
+}
+
+function withSeatingFallback(exam) {
+  const raw = typeof exam?.toObject === "function" ? exam.toObject() : exam;
+  const seating = Array.isArray(raw?.seating_plan) ? raw.seating_plan : [];
+  if (seating.length > 0) {
+    return {
+      ...raw,
+      required_invigilators: Math.max(Number(raw?.required_invigilators) || 1, seating.length),
+    };
+  }
+
+  const room = String(raw?.room_number || "").trim();
+  const students = Number(raw?.student_count || 0);
+  if (!room || students <= 0) return raw;
+
+  return {
+    ...raw,
+    required_invigilators: Math.max(Number(raw?.required_invigilators) || 1, 1),
+    seating_plan: [
+      {
+        room_number: room,
+        room_capacity: students,
+        assigned_count: students,
+        start_roll: 1,
+        end_roll: students,
+      },
+    ],
+  };
 }
 
 function buildWorkloadStats(teachers, allocations) {
@@ -229,7 +387,89 @@ async function getOrCreatePolicy() {
   return policy;
 }
 
+async function backfillLegacyExamSeating() {
+  const legacyExams = await Exam.find({
+    $or: [
+      { seating_plan: { $exists: false } },
+      { seating_plan: { $size: 0 } },
+      { student_count: { $exists: false } },
+      { student_count: null },
+    ],
+  }).sort({ exam_date: 1, start_time: 1, createdAt: 1 });
+
+  for (const exam of legacyExams) {
+    try {
+      await exam.validate();
+      await exam.save();
+    } catch {
+      // Continue processing so one problematic exam does not block all legacy backfills.
+    }
+  }
+}
+
+function toDateKey(value) {
+  return String(value || "").slice(0, 10);
+}
+
+function isTeacherOnLeave(leaveDateSet, teacherId, examDate) {
+  const dates = leaveDateSet.get(String(teacherId));
+  if (!dates) return false;
+  return dates.has(toDateKey(examDate));
+}
+
+function hasSubjectConflict(teacher, examDoc) {
+  const teacherSubject = String(teacher?.subject || "").trim().toLowerCase();
+  const examSubject = String(examDoc?.subject || "").trim().toLowerCase();
+  return Boolean(teacherSubject && examSubject && teacherSubject === examSubject);
+}
+
+function getExamSlots(examDoc) {
+  const plan = Array.isArray(examDoc?.seating_plan) ? examDoc.seating_plan : [];
+  if (plan.length) {
+    return plan.map((slot) => ({
+      room_number: slot.room_number,
+      start_roll: Number(slot.start_roll) || 1,
+      end_roll: Number(slot.end_roll) || 1,
+      assigned_count: Number(slot.assigned_count) || 0,
+    }));
+  }
+
+  const students = Number(examDoc?.student_count || 0);
+  const room = String(examDoc?.room_number || "").trim();
+  if (!room || students <= 0) return [];
+
+  return [{
+    room_number: room,
+    start_roll: 1,
+    end_roll: students,
+    assigned_count: students,
+  }];
+}
+
+function pickTeacherForSlot({
+  candidateTeachers,
+  examDoc,
+  usedTeacherIds,
+  leaveDateSet,
+  assignedDateMap,
+}) {
+  for (const teacher of candidateTeachers) {
+    const teacherId = String(teacher._id);
+    if (usedTeacherIds.has(teacherId)) continue;
+    if (hasSubjectConflict(teacher, examDoc)) continue;
+    if (isTeacherOnLeave(leaveDateSet, teacherId, examDoc.exam_date)) continue;
+
+    const dateKey = toDateKey(examDoc.exam_date);
+    const alreadyAssignedDates = assignedDateMap.get(teacherId) || new Set();
+    if (alreadyAssignedDates.has(dateKey)) continue;
+
+    return teacher;
+  }
+  return null;
+}
+
 async function runAllocationPipeline(rulesText) {
+  await backfillLegacyExamSeating();
   const teachers = await Teacher.find().lean();
   const exams = await Exam.find().lean();
   const allLeaves = await TeacherLeave.find().lean();
@@ -237,6 +477,8 @@ async function runAllocationPipeline(rulesText) {
   if (!teachers.length || !exams.length) {
     throw new Error("Teachers or exams data missing");
   }
+
+  const enrichedExams = enrichExamsWithCapacities(exams);
 
   const teachersWithMergedLeaves = teachers.map((teacher) => {
     const teacherLeaves = allLeaves
@@ -251,30 +493,108 @@ async function runAllocationPipeline(rulesText) {
 
   const aiResponse = await axios.post(`${AI_ENGINE_URL}/generate`, {
     teachers: teachersWithMergedLeaves,
-    exams,
+    exams: enrichedExams,
     rules: rulesText || DEFAULT_RULES,
   });
 
   const roster = aiResponse.data.roster || [];
 
+  const teachersByEmail = new Map(
+    teachers.map((teacher) => [String(teacher.email || "").toLowerCase(), teacher])
+  );
+  const teachersById = new Map(
+    teachers.map((teacher) => [String(teacher._id), teacher])
+  );
+  const examByKey = new Map(
+    exams.map((exam) => [
+      `${String(exam.subject || "").toLowerCase()}__${toDateKey(exam.exam_date)}`,
+      exam,
+    ])
+  );
+  const leaveDateSet = new Map();
+  allLeaves.forEach((leave) => {
+    const tid = String(leave.teacher_id);
+    if (!leaveDateSet.has(tid)) leaveDateSet.set(tid, new Set());
+    leaveDateSet.get(tid).add(toDateKey(leave.leave_date));
+  });
+
   await DutyAllocation.deleteMany({});
   await Teacher.updateMany({}, { $set: { totalDuties: 0 } });
+
+  const assignedDateMap = new Map();
+  const dutyCountMap = new Map(teachers.map((teacher) => [String(teacher._id), 0]));
+
+  const markAssigned = (teacherId, examDate) => {
+    const tid = String(teacherId);
+    if (!assignedDateMap.has(tid)) assignedDateMap.set(tid, new Set());
+    assignedDateMap.get(tid).add(toDateKey(examDate));
+    dutyCountMap.set(tid, (dutyCountMap.get(tid) || 0) + 1);
+  };
+
+  const createAllocation = async (teacherId, examDoc, slot) => {
+    await DutyAllocation.create({
+      teacher_id: teacherId,
+      exam_id: examDoc._id,
+      room_number: slot.room_number || examDoc.room_number || "",
+      start_roll: slot.start_roll,
+      end_roll: slot.end_roll,
+      assigned_count: slot.assigned_count,
+      status: "assigned",
+    });
+    markAssigned(teacherId, examDoc.exam_date);
+  };
 
   for (const item of roster) {
     if (!item.teacher || item.teacher === "UNASSIGNED") continue;
 
-    const teacherDoc = await Teacher.findOne({ email: item.teacher });
-    const examDoc = await Exam.findOne({ subject: item.exam, exam_date: item.date });
+    const teacherDoc = teachersByEmail.get(String(item.teacher || "").toLowerCase());
+    const examDoc = examByKey.get(`${String(item.exam || "").toLowerCase()}__${toDateKey(item.date)}`);
 
     if (teacherDoc && examDoc) {
-      await DutyAllocation.create({
-        teacher_id: teacherDoc._id,
-        exam_id: examDoc._id,
-        status: "assigned",
-      });
-      teacherDoc.totalDuties += 1;
-      await teacherDoc.save();
+      const slots = getExamSlots(examDoc);
+      if (!slots.length) continue;
+
+      const usedTeacherIds = new Set();
+
+      // Primary AI-selected teacher takes first slot.
+      await createAllocation(String(teacherDoc._id), examDoc, slots[0]);
+      usedTeacherIds.add(String(teacherDoc._id));
+
+      // For additional rooms, pick additional teachers so each room has an invigilator.
+      for (let i = 1; i < slots.length; i += 1) {
+        const candidateTeachers = [...teachers]
+          .sort((a, b) => (dutyCountMap.get(String(a._id)) || 0) - (dutyCountMap.get(String(b._id)) || 0));
+
+        let extraTeacher = pickTeacherForSlot({
+          candidateTeachers,
+          examDoc,
+          usedTeacherIds,
+          leaveDateSet,
+          assignedDateMap,
+        });
+
+        // Relax date conflict only if strictly needed to avoid leaving a room unstaffed.
+        if (!extraTeacher) {
+          extraTeacher = candidateTeachers.find((teacher) => {
+            const teacherId = String(teacher._id);
+            if (usedTeacherIds.has(teacherId)) return false;
+            if (hasSubjectConflict(teacher, examDoc)) return false;
+            if (isTeacherOnLeave(leaveDateSet, teacherId, examDoc.exam_date)) return false;
+            return true;
+          }) || null;
+        }
+
+        if (extraTeacher) {
+          await createAllocation(String(extraTeacher._id), examDoc, slots[i]);
+          usedTeacherIds.add(String(extraTeacher._id));
+        }
+      }
     }
+  }
+
+  const teacherIds = [...dutyCountMap.keys()];
+  for (const tid of teacherIds) {
+    await Teacher.updateOne({ _id: tid }, { $set: { totalDuties: dutyCountMap.get(tid) || 0 } });
   }
 
   return {
@@ -293,35 +613,81 @@ router.get("/", async (req, res) => {
     const [allocations, exams] = await Promise.all([
       DutyAllocation.find()
         .populate("teacher_id", "name department email")
-        .populate("exam_id", "subject class_name exam_date start_time end_time room_number"),
+        .populate("exam_id", "subject class_name exam_date start_time end_time room_number seating_plan student_count"),
       Exam.find().lean(),
     ]);
 
-    const allocatedExamIds = new Set(
-      allocations
-        .map((allocation) => allocation.exam_id?._id?.toString())
-        .filter(Boolean)
-    );
+    const allocationsByExamId = new Map();
+    allocations.forEach((allocation) => {
+      const examId = String(allocation.exam_id?._id || "");
+      if (!examId) return;
+      if (!allocationsByExamId.has(examId)) allocationsByExamId.set(examId, []);
+      allocationsByExamId.get(examId).push(allocation);
+    });
 
     // 1. Map persisted allocated rows.
     const formattedAllocated = allocations.map((a) => ({
       _id: a._id,
       status: a.status,
       teacher: a.teacher_id,
-      exam: a.exam_id,
-      class_name: a.exam_id ? a.exam_id.class_name : "N/A"
+      exam: withSeatingFallback(a.exam_id),
+      class_name: a.exam_id ? a.exam_id.class_name : "N/A",
+      room_number: a.room_number,
+      start_roll: a.start_roll,
+      end_roll: a.end_roll,
+      assigned_count: a.assigned_count,
     }));
 
-    // 2. Add synthetic rows for exams that are currently unassigned.
-    const formattedUnassigned = exams
-      .filter((exam) => !allocatedExamIds.has(String(exam._id)))
-      .map((exam) => ({
-        _id: `UNASSIGNED_${exam._id}`,
-        status: "unassigned",
-        teacher: null,
-        exam,
-        class_name: exam.class_name || "N/A",
-      }));
+    // 2. Add synthetic rows for any split room that does not yet have a teacher.
+    const formattedUnassigned = exams.flatMap((exam) => {
+      const normalizedExam = withSeatingFallback(exam);
+      const slots = Array.isArray(normalizedExam.seating_plan) ? normalizedExam.seating_plan : [];
+      const examAllocations = allocationsByExamId.get(String(exam._id)) || [];
+
+      const assignedSlotKeys = new Set(
+        examAllocations.map((row) => {
+          const room = String(row.room_number || normalizedExam.room_number || "");
+          const start = Number(row.start_roll) || 0;
+          const end = Number(row.end_roll) || 0;
+          return `${room}__${start}__${end}`;
+        })
+      );
+
+      if (!slots.length) {
+        if (examAllocations.length > 0) return [];
+        return [{
+          _id: `UNASSIGNED_${exam._id}`,
+          status: "unassigned",
+          teacher: null,
+          exam: normalizedExam,
+          class_name: exam.class_name || "N/A",
+          room_number: normalizedExam.room_number || "",
+          start_roll: 0,
+          end_roll: 0,
+          assigned_count: 0,
+        }];
+      }
+
+      return slots
+        .map((slot, index) => ({ slot, index }))
+        .filter(({ slot }) => {
+          const room = String(slot.room_number || "");
+          const start = Number(slot.start_roll) || 0;
+          const end = Number(slot.end_roll) || 0;
+          return !assignedSlotKeys.has(`${room}__${start}__${end}`);
+        })
+        .map(({ slot, index }) => ({
+          _id: `UNASSIGNED_${exam._id}_${index}`,
+          status: "unassigned",
+          teacher: null,
+          exam: normalizedExam,
+          class_name: exam.class_name || "N/A",
+          room_number: slot.room_number,
+          start_roll: Number(slot.start_roll) || 0,
+          end_roll: Number(slot.end_roll) || 0,
+          assigned_count: Number(slot.assigned_count) || 0,
+        }));
+    });
 
     let formatted = [...formattedAllocated, ...formattedUnassigned];
 
@@ -438,13 +804,20 @@ router.get("/fairness", async (req, res) => {
     const exams = await Exam.find().lean();
 
     const stats = buildWorkloadStats(teachers, allocations);
-    const unassignedCount = Math.max(0, exams.length - allocations.length);
+    const assignedExamIds = new Set(
+      allocations
+        .map((allocation) => String(allocation.exam_id || ""))
+        .filter(Boolean)
+    );
+    const assignedExamsCount = assignedExamIds.size;
+    const unassignedCount = Math.max(0, exams.length - assignedExamsCount);
 
     res.json({
       ...stats,
       cycle: {
         totalExams: exams.length,
-        assignedExams: allocations.length,
+        assignedExams: assignedExamsCount,
+        assignedSlots: allocations.length,
         unassignedExams: unassignedCount,
       },
     });
@@ -640,6 +1013,8 @@ router.post("/simulate", async (req, res) => {
       ? req.body.absentTeacherEmails.map((email) => String(email).trim().toLowerCase()).filter(Boolean)
       : [];
 
+    const enrichedExams = enrichExamsWithCapacities(exams);
+
     const teachersWithMergedLeaves = teachers.map((teacher) => {
       const teacherLeaves = allLeaves
         .filter((leave) => String(leave.teacher_id) === String(teacher._id))
@@ -662,9 +1037,9 @@ router.post("/simulate", async (req, res) => {
       4. Avoid assigning teachers multiple times on same date.
     `;
 
-    const aiResponse = await axios.post("http://127.0.0.1:5001/generate", {
+    const aiResponse = await axios.post(`${AI_ENGINE_URL}/generate`, {
       teachers: teachersWithMergedLeaves,
-      exams,
+      exams: enrichedExams,
       rules: simulationRules,
     });
 

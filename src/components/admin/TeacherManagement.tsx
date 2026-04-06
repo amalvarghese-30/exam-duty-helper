@@ -36,7 +36,7 @@ interface Teacher {
   availability_status?: string;
 }
 
-const API = "http://localhost:5000/teachers";
+const API = `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/teachers`;
 
 export default function TeacherManagement() {
 

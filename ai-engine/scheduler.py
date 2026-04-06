@@ -18,6 +18,21 @@ def generate_schedule(teachers, exams, constraints):
     if equalize:
         teachers = sorted(teachers, key=lambda x: x.get("totalDuties", 0))
 
+    def has_capacity_conflict(exam):
+        class_capacity = exam.get("class_capacity", exam.get("student_count", 0))
+        room_capacity = exam.get("room_capacity", 0)
+
+        try:
+            class_capacity = int(class_capacity)
+            room_capacity = int(room_capacity)
+        except (TypeError, ValueError):
+            return False
+
+        if class_capacity <= 0 or room_capacity <= 0:
+            return False
+
+        return room_capacity < class_capacity
+
     def try_assign_teacher(exam, per_day_limit):
         for teacher in teachers:
             teacher_name = (teacher.get("name") or "").lower()
@@ -56,6 +71,14 @@ def generate_schedule(teachers, exams, constraints):
         return None
 
     for exam in exams:
+        if has_capacity_conflict(exam):
+            duty_roster.append({
+                "teacher": "UNASSIGNED",
+                "exam": exam["subject"],
+                "date": exam["exam_date"]
+            })
+            continue
+
         assigned_teacher = try_assign_teacher(exam, max_per_day)
 
         # Coverage fallback: allow up to 2 duties/day when strict limit leaves exam unassigned.

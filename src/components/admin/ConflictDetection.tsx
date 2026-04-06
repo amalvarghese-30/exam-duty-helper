@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import ModuleHero from '@/components/ModuleHero';
 import { ShieldAlert, RefreshCw, CheckCircle2, AlertTriangle } from 'lucide-react';
 
-const API = 'http://localhost:5000';
+const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 interface ConflictResponse {
   generatedAt: string;

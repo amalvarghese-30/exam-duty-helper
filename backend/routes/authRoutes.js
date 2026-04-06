@@ -7,23 +7,34 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const Teacher = require("../models/Teacher");
 
+const JWT_SECRET = process.env.JWT_SECRET || "dev-only-change-me";
+
+function escapeRegex(value) {
+    return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+if (process.env.NODE_ENV === "production" && !process.env.JWT_SECRET) {
+    throw new Error("Missing required environment variable: JWT_SECRET");
+}
+
 // REGISTER
 router.post("/register", async (req, res) => {
-    console.log("📝 Registration request received:", req.body);
+    console.log("📝 Registration request received");
 
     try {
-        const { fullName, email, password } = req.body;
+        const { fullName, password } = req.body;
+        const email = String(req.body.email || "").trim().toLowerCase();
 
         // Validate required fields
         if (!fullName || !email || !password) {
-            console.log("❌ Missing required fields:", { fullName, email, password });
+            console.log("❌ Missing required registration fields");
             return res.status(400).json({
                 error: "Missing required fields: fullName, email, and password are required"
             });
         }
 
         // Check if user already exists
-        const existingUser = await User.findOne({ email });
+        const existingUser = await User.findOne({ email: new RegExp(`^${escapeRegex(email)}$`, "i") });
         if (existingUser) {
             console.log("❌ User already exists:", email);
             return res.status(400).json({
@@ -64,7 +75,7 @@ router.post("/register", async (req, res) => {
         // Create JWT token
         const token = jwt.sign(
             { id: user._id, role: user.role },
-            "secretKey",
+            JWT_SECRET,
             { expiresIn: "1d" }
         );
 
@@ -82,10 +93,8 @@ router.post("/register", async (req, res) => {
 
     } catch (err) {
         console.error("❌ REGISTER ERROR:", err);
-        console.error("Error stack:", err.stack);
         res.status(500).json({
-            error: err.message,
-            details: err.stack
+            error: "Registration failed"
         });
     }
 });
@@ -95,7 +104,8 @@ router.post("/login", async (req, res) => {
     console.log("🔐 Login request received:", { email: req.body.email });
 
     try {
-        const { email, password } = req.body;
+        const password = req.body.password;
+        const email = String(req.body.email || "").trim();
 
         // Validate required fields
         if (!email || !password) {
@@ -104,7 +114,7 @@ router.post("/login", async (req, res) => {
             });
         }
 
-        const user = await User.findOne({ email });
+        const user = await User.findOne({ email: new RegExp(`^${escapeRegex(email)}$`, "i") });
         if (!user) {
             console.log("❌ User not found:", email);
             return res.status(404).json({
@@ -122,7 +132,7 @@ router.post("/login", async (req, res) => {
 
         const token = jwt.sign(
             { id: user._id, role: user.role },
-            "secretKey",
+            JWT_SECRET,
             { expiresIn: "1d" }
         );
 

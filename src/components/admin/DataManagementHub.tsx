@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import ModuleHero from '@/components/ModuleHero';
 import { Database, Users, CalendarDays, ClipboardList, CalendarCheck2 } from 'lucide-react';
 
-const API = 'http://localhost:5000';
+const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 interface HubResponse {
   counts: {

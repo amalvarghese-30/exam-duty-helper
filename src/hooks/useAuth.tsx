@@ -13,7 +13,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
 }
 
-const API = "http://localhost:5000";
+const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -43,7 +43,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     try {
-      const response = await axios.post(`${API}/auth/login`, { email, password });
+      const normalizedEmail = email.trim().toLowerCase();
+      const response = await axios.post(`${API}/auth/login`, { email: normalizedEmail, password });
       const { token, user: userData, role: userRole } = response.data;
 
       localStorage.setItem('token', token);
@@ -62,7 +63,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = async (email: string, password: string, fullName: string) => {
     try {
-      const response = await axios.post(`${API}/auth/register`, { email, password, fullName });
+      const normalizedEmail = email.trim().toLowerCase();
+      const response = await axios.post(`${API}/auth/register`, { email: normalizedEmail, password, fullName });
       const { token, user: userData, role: userRole } = response.data;
 
       localStorage.setItem('token', token);

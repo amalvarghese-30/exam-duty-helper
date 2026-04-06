@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { ClipboardList, Calendar, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
-const API = "http://localhost:5000";
+const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 export default function TeacherOverview() {
   const { user } = useAuth();

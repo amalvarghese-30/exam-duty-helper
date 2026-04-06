@@ -5,7 +5,7 @@ import ModuleHero from '@/components/ModuleHero';
 import { Users, Calendar, ClipboardList, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 
-const API = "http://localhost:5000";
+const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 export default function AdminOverview() {
   const [stats, setStats] = useState({ teachers: 0, exams: 0, allocations: 0 });

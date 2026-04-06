@@ -11,7 +11,7 @@ import ModuleHero from '@/components/ModuleHero';
 import { toast } from 'sonner';
 import { Plus, Pencil, Trash2, Upload } from 'lucide-react';
 
-const API = "http://localhost:5000";
+const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 interface Exam {
   _id: string;
@@ -22,6 +22,14 @@ interface Exam {
   end_time: string;
   room_number: string;
   required_invigilators: number;
+  student_count: number;
+  seating_plan?: Array<{
+    room_number: string;
+    start_roll: number;
+    end_roll: number;
+    assigned_count: number;
+    room_capacity: number;
+  }>;
 }
 
 export default function ExamScheduleManagement() {
@@ -29,7 +37,7 @@ export default function ExamScheduleManagement() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Exam | null>(null);
   const [form, setForm] = useState({
-    subject: '', class_name: '', exam_date: '', start_time: '', end_time: '', room_number: '', required_invigilators: 1
+    subject: '', class_name: '', exam_date: '', start_time: '', end_time: '', room_number: '', required_invigilators: 1, student_count: 30
   });
   const [loading, setLoading] = useState(true);
 
@@ -47,12 +55,68 @@ export default function ExamScheduleManagement() {
 
   useEffect(() => { fetchExams(); }, []);
 
+  const getEffectiveSeatingPlan = (exam: Exam) => {
+    const plan = exam.seating_plan || [];
+    if (plan.length > 0) return plan;
+
+    const room = String(exam.room_number || '').trim();
+    const students = Number(exam.student_count || 0);
+    if (!room || students <= 0) return [];
+
+    return [{
+      room_number: room,
+      start_roll: 1,
+      end_roll: students,
+      assigned_count: students,
+      room_capacity: students,
+    }];
+  };
+
+  const getSeatingSplitText = (exam: Exam) => {
+    const plan = getEffectiveSeatingPlan(exam);
+    if (plan.length > 0) {
+      return plan
+        .map((slot) => `${slot.room_number}: ${slot.start_roll}-${slot.end_roll}`)
+        .join(', ');
+    }
+
+    const room = String(exam.room_number || '').trim();
+    const students = Number(exam.student_count || 0);
+    if (room && students > 0) {
+      return `${room}: 1-${students}`;
+    }
+
+    return '—';
+  };
+
+  const getRequiredInvigilators = (exam: Exam) => {
+    const splitRooms = getEffectiveSeatingPlan(exam).length;
+    return Math.max(Number(exam.required_invigilators) || 1, splitRooms || 1);
+  };
+
+  const getRoomDisplayText = (exam: Exam) => {
+    const plan = getEffectiveSeatingPlan(exam);
+    if (plan.length > 0) {
+      const uniqueRooms = Array.from(new Set(plan.map((slot) => String(slot.room_number || '').trim()).filter(Boolean)));
+      if (uniqueRooms.length > 0) {
+        return uniqueRooms.join(', ');
+      }
+    }
+
+    const room = String(exam.room_number || '').trim();
+    return room || '—';
+  };
+
   const handleSave = async () => {
     if (!form.subject || !form.class_name || !form.exam_date || !form.start_time || !form.end_time) {
       toast.error('Please fill all required fields');
       return;
     }
-    const payload = { ...form, required_invigilators: Number(form.required_invigilators) };
+    const payload = {
+      ...form,
+      required_invigilators: Number(form.required_invigilators),
+      student_count: Number(form.student_count),
+    };
 
     try {
       if (editing) {
@@ -91,14 +155,15 @@ export default function ExamScheduleManagement() {
       start_time: e.start_time,
       end_time: e.end_time,
       room_number: e.room_number,
-      required_invigilators: e.required_invigilators
+      required_invigilators: getRequiredInvigilators(e),
+      student_count: e.student_count || 30,
     });
     setDialogOpen(true);
   };
 
   const openNew = () => {
     setEditing(null);
-    setForm({ subject: '', class_name: '', exam_date: '', start_time: '', end_time: '', room_number: '', required_invigilators: 1 });
+    setForm({ subject: '', class_name: '', exam_date: '', start_time: '', end_time: '', room_number: '', required_invigilators: 1, student_count: 30 });
     setDialogOpen(true);
   };
 
@@ -122,6 +187,7 @@ export default function ExamScheduleManagement() {
         end_time: obj['end_time'] || obj['end'] || '12:00',
         room_number: obj['room'] || obj['room_number'] || '',
         required_invigilators: parseInt(obj['invigilators'] || obj['required_invigilators'] || '1') || 1,
+        student_count: parseInt(obj['student_count'] || obj['class_strength'] || obj['strength'] || '30') || 30,
       };
     }).filter(r => r.subject && r.exam_date);
 
@@ -185,6 +251,8 @@ export default function ExamScheduleManagement() {
               <TableHead>Date</TableHead>
               <TableHead>Time</TableHead>
               <TableHead>Room</TableHead>
+              <TableHead>Seating Split</TableHead>
+              <TableHead>Students</TableHead>
               <TableHead>Invigilators</TableHead>
               <TableHead className="w-24">Actions</TableHead>
             </TableRow>
@@ -192,7 +260,7 @@ export default function ExamScheduleManagement() {
           <TableBody>
             {exams.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                   No exams scheduled. Add exams manually or import via CSV.
                 </TableCell>
               </TableRow>
@@ -203,8 +271,12 @@ export default function ExamScheduleManagement() {
                   <TableCell className="font-medium">{e.class_name || '—'}</TableCell>
                   <TableCell>{new Date(e.exam_date).toLocaleDateString()}</TableCell>
                   <TableCell className="text-muted-foreground">{e.start_time.slice(0, 5)} – {e.end_time.slice(0, 5)}</TableCell>
-                  <TableCell>{e.room_number}</TableCell>
-                  <TableCell>{e.required_invigilators}</TableCell>
+                  <TableCell>{getRoomDisplayText(e)}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground max-w-xs">
+                    {getSeatingSplitText(e)}
+                  </TableCell>
+                  <TableCell>{e.student_count || 30}</TableCell>
+                  <TableCell>{getRequiredInvigilators(e)}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
                       <Button variant="ghost" size="icon" onClick={() => openEdit(e)}>
@@ -269,6 +341,10 @@ export default function ExamScheduleManagement() {
             <div className="space-y-2">
               <Label>Required Invigilators</Label>
               <Input type="number" min={1} value={form.required_invigilators} onChange={e => setForm({ ...form, required_invigilators: parseInt(e.target.value) || 1 })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Student Count</Label>
+              <Input type="number" min={1} value={form.student_count} onChange={e => setForm({ ...form, student_count: parseInt(e.target.value) || 1 })} />
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
